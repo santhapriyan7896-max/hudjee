@@ -1,0 +1,28 @@
+:root{
+--font-display:'Nunito',sans-serif;
+--font-body:'Nunito',sans-serif;
+--font-question:'Montserrat',sans-serif;
+
+--fw-regular:400; /* @kind other */
+--fw-medium:500; /* @kind other */
+--fw-semibold:600; /* @kind other */
+--fw-bold:700; /* @kind other */
+--fw-extrabold:800; /* @kind other */
+--fw-black:900; /* @kind other */
+
+/* HudJee visual-system type scale (Nunito) */
+--text-display:44px;
+--text-heading-lg:22px;
+--text-heading-md:18px;
+--text-body:15px;
+--text-label:13px;
+--text-caption:12px;
+--text-numeric:16px;
+
+/* Legacy/dashboard scale */
+--text-hero-title:36px;
+--text-card-title:22px;
+--text-section-title:20px;
+--text-stat-value:42px;
+--text-question:18px;
+}

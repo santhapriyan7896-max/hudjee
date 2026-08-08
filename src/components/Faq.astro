@@ -1,0 +1,45 @@
+---
+import { faq } from '../data/site';
+---
+<section class="pad" id="faq">
+  <div class="wrap">
+    <div class="sec-head center rv">
+      <p class="eyebrow">{faq.eyebrow}</p>
+      <h2>{faq.headline}</h2>
+    </div>
+    <div class="faq rv">
+      {faq.items.map((item, i) => (
+        <div class="q">
+          <button type="button" aria-expanded="false" aria-controls={`faq-a-${i}`}>
+            <span>{item.q}</span><span class="chev" aria-hidden="true">+</span>
+          </button>
+          <div class="a" id={`faq-a-${i}`}><p>{item.a}</p></div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .faq{max-width:780px;margin:0 auto;}
+  .q{background:var(--app-card);border-radius:var(--app-r-tile);margin-bottom:10px;overflow:hidden;}
+  .q button{
+    width:100%;background:none;border:none;text-align:left;padding:20px var(--space-5);
+    font-size:16px;font-weight:var(--fw-extrabold);display:flex;justify-content:space-between;
+    align-items:center;gap:var(--space-4);cursor:pointer;transition:background .12s;
+  }
+  .q button:hover{background:var(--app-elevated);}
+  .q button:focus-visible{outline:2px solid var(--app-purple);outline-offset:-2px;}
+  .chev{
+    width:26px;height:26px;border-radius:var(--radius-sm);background:var(--app-elevated);
+    color:var(--app-purple);display:grid;place-items:center;font-size:17px;line-height:1;
+    flex-shrink:0;transition:transform .18s cubic-bezier(.2,1.3,.4,1);
+  }
+  .q:global(.open) .chev{transform:rotate(135deg);}
+  .a{max-height:0;overflow:hidden;transition:max-height .28s cubic-bezier(.2,1,.4,1);}
+  .a p{
+    color:var(--app-text-2);font-size:15px;font-weight:var(--fw-semibold);
+    line-height:1.55;padding:0 var(--space-5) 20px;
+  }
+  @media (prefers-reduced-motion:reduce){ .a{max-height:none;} }
+</style>

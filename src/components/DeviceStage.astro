@@ -1,0 +1,85 @@
+---
+import { stageCaptions } from '../data/site';
+import PhoneScreens from './PhoneScreens.astro';
+
+const huds = [
+  { label: 'Mastery',  value: '82%',      cls: '',       left: '-34%', top: '16%' },
+  { label: 'Streak',   value: '41 days',  cls: 'gold',   left: '88%',  top: '30%' },
+  { label: 'Rank',     value: '▲ 87',     cls: '',       left: '-28%', top: '70%' },
+  { label: 'Adaptive', value: 'ON',       cls: 'purple', left: '84%',  top: '78%' },
+];
+---
+<div id="stage">
+  <div class="stage-pin">
+    <div class="stage-caption">
+      {stageCaptions.map((c, i) => (
+        <div class:list={['cap', i === 0 && 'on']} data-cap={i}>
+          <h3 class="grad">{c.title}</h3>
+          <p>{c.body}</p>
+        </div>
+      ))}
+    </div>
+
+    <div class="device" id="device">
+      <div class="phone">
+        <div class="screen"><PhoneScreens /></div>
+      </div>
+      {huds.map((h, i) => (
+        <div class:list={['hud', h.cls]} data-hud={i} style={`left:${h.left};top:${h.top}`}>
+          {h.label} <b>{h.value}</b>
+        </div>
+      ))}
+    </div>
+  </div>
+</div>
+
+<style>
+  #stage{position:relative;height:420vh;z-index:2;}
+  .stage-pin{position:sticky;top:0;height:100vh;display:grid;place-items:center;overflow:hidden;}
+  .stage-caption{
+    position:absolute;left:50%;top:6%;transform:translateX(-50%);text-align:center;
+    width:min(92vw,700px);pointer-events:none;z-index:4;
+  }
+  .cap{
+    position:absolute;left:0;right:0;top:0;opacity:0;transform:translateY(18px);
+    transition:opacity .28s,transform .34s cubic-bezier(.2,1.25,.4,1);
+  }
+  .cap:global(.on){opacity:1;transform:none;}
+  .cap h3{font-size:clamp(22px,3.4vw,40px);margin-bottom:var(--space-2);}
+  .cap p{color:var(--app-text-2);font-size:15px;font-weight:var(--fw-bold);max-width:460px;margin:0 auto;}
+
+  .device{will-change:transform;transform-origin:center center;position:relative;}
+  .phone{
+    width:302px;border-radius:38px;padding:10px;background:var(--app-elevated);
+    border-bottom:8px solid #16161a;position:relative;
+  }
+  .phone::before{
+    content:"";position:absolute;top:19px;left:50%;transform:translateX(-50%);
+    width:78px;height:6px;border-radius:3px;background:#000;z-index:3;
+  }
+  .screen{background:var(--app-bg);border-radius:30px;overflow:hidden;position:relative;height:572px;}
+
+  .hud{
+    position:absolute;padding:10px 15px;border-radius:var(--radius-md);font-size:12px;
+    font-weight:var(--fw-extrabold);background:var(--app-elevated);
+    border:1px solid var(--app-card-border);white-space:nowrap;opacity:0;
+    color:var(--app-text);will-change:transform,opacity;
+  }
+  .hud :global(b){color:var(--app-purple);}
+  .hud.gold :global(b){color:var(--app-amber);}
+  .hud.purple :global(b){color:var(--app-purple);}
+
+  @media (max-width:960px){ #stage{height:340vh;} .hud{display:none;} }
+  @media (max-width:600px){
+    #stage{height:300vh;}
+    .phone{width:252px;}
+    .screen{height:496px;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    #stage{height:auto;}
+    .stage-pin{position:static;height:auto;padding:60px 0;}
+    .stage-caption{position:static;transform:none;margin:0 auto var(--space-6);}
+    .cap{position:static;opacity:1;transform:none;margin-bottom:var(--space-6);}
+    .device{transform:none!important;}
+  }
+</style>

@@ -1,0 +1,43 @@
+---
+import { score } from '../data/site';
+---
+<section class="pad" id="score">
+  <div class="wrap cps-grid">
+    <div class="rv">
+      <p class="eyebrow">{score.eyebrow}</p>
+      <h2 data-split>{score.headline} <em class="grad">{score.headlineAccent}</em></h2>
+      <p class="lede">{score.lede}</p>
+      <a href={score.cta.href} class="btn btn-primary">{score.cta.label}</a>
+    </div>
+    <div class="factors rv" id="factors">
+      {score.factors.map((f) => (
+        <div class="factor">
+          <span class="fn">{f.name}</span>
+          <span class="ftrack"><i data-w={f.bar}></i></span>
+          <span class="fw">{f.weight}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  h2 em{font-style:normal;}
+  .cps-grid{display:grid;grid-template-columns:.92fr 1.08fr;gap:64px;align-items:center;}
+  .lede{margin:var(--space-4) 0 var(--space-7);}
+  .factors{
+    background:var(--app-card);border-radius:var(--app-r-card);
+    padding:var(--space-6);display:grid;gap:var(--space-4);
+  }
+  .factor{display:grid;grid-template-columns:116px 1fr 44px;align-items:center;gap:var(--space-4);font-size:14px;}
+  .factor .fn{font-weight:var(--fw-extrabold);}
+  .factor .fw{color:var(--app-purple);text-align:right;font-weight:var(--fw-black);font-size:14px;}
+  .ftrack{height:10px;background:#232227;border-radius:var(--radius-pill);overflow:hidden;}
+  .ftrack i{
+    display:block;height:100%;width:0;border-radius:var(--radius-pill);will-change:width;
+    background:linear-gradient(90deg,var(--app-grad-start),var(--app-grad-end));
+  }
+  @media (max-width:960px){ .cps-grid{grid-template-columns:1fr;gap:40px;} }
+  @media (max-width:600px){ .factor{grid-template-columns:92px 1fr 40px;gap:10px;font-size:13px;} }
+  @media (prefers-reduced-motion:reduce){ .ftrack i{width:var(--w,100%);} }
+</style>

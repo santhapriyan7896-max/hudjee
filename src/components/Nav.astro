@@ -1,0 +1,31 @@
+---
+import { nav } from '../data/site';
+---
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top" aria-label="HudJee — home">
+      <img src="/assets/hudjee-logo.png" alt="HudJee" width="194" height="46" />
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      {nav.links.map((l) => <a href={l.href}>{l.label}</a>)}
+      <a href={nav.cta.href} class="btn btn-primary btn-sm">{nav.cta.label}</a>
+    </nav>
+  </div>
+</header>
+
+<style>
+  .nav{
+    position:fixed;top:0;left:0;right:0;z-index:900;
+    border-bottom:2px solid transparent;
+    transition:background .25s,border-color .25s;
+  }
+  .nav:global(.stuck){background:#000;border-bottom-color:var(--app-card-border);}
+  .nav-in{display:flex;align-items:center;justify-content:space-between;height:72px;}
+  .brand img{height:24px;width:auto;}
+  .nav-links{display:flex;align-items:center;gap:var(--space-7);}
+  .nav-links a:not(.btn){
+    color:var(--app-text-2);font-size:14px;font-weight:var(--fw-bold);transition:color .12s;
+  }
+  .nav-links a:not(.btn):hover{color:var(--app-text);}
+  @media (max-width:960px){ .nav-links a:not(.btn){display:none;} }
+</style>

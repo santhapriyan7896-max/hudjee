@@ -1,0 +1,71 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Preloader from '../components/Preloader.astro';
+import Nav from '../components/Nav.astro';
+import Hero from '../components/Hero.astro';
+import DeviceStage from '../components/DeviceStage.astro';
+import FiveAm from '../components/FiveAm.astro';
+import Streak from '../components/Streak.astro';
+import Marquee from '../components/Marquee.astro';
+import Steps from '../components/Steps.astro';
+import Score from '../components/Score.astro';
+import Features from '../components/Features.astro';
+import Stats from '../components/Stats.astro';
+import Faq from '../components/Faq.astro';
+import Cta from '../components/Cta.astro';
+import Footer from '../components/Footer.astro';
+---
+<Layout>
+  <Preloader />
+  <div id="prog"></div>
+  <div id="glow"></div>
+
+  <Nav />
+  <main id="top">
+    <Hero />
+    <DeviceStage />
+    <FiveAm />
+    <Marquee />
+    <Steps />
+    <Streak />
+    <Score />
+    <Features />
+    <Stats />
+    <Faq />
+    <Cta />
+  </main>
+  <Footer />
+</Layout>
+
+<script>
+  import { initScroll } from '../scripts/scroll';
+
+  initScroll();
+
+  /* Preloader → hero reveal */
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const unlock = () => document.body.classList.remove('is-locked');
+
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      document.getElementById('pre')?.classList.add('done');
+      unlock();
+      document.querySelectorAll('#hero .rv, #hero .split').forEach((el, i) => {
+        setTimeout(() => el.classList.add('in'), 100 + i * 90);
+      });
+    }, reduce ? 80 : 900);
+  });
+  setTimeout(unlock, 2400); // safety net if `load` never fires
+
+  /* Smooth anchor scrolling */
+  document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      const id = a.getAttribute('href');
+      if (!id || id.length < 2) return;
+      const el = document.querySelector(id);
+      if (!el) return;
+      e.preventDefault();
+      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 40, behavior: 'smooth' });
+    });
+  });
+</script>

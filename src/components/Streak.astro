@@ -1,0 +1,102 @@
+---
+import { streak as s } from '../data/site';
+const days = Array.from({ length: s.totalDays }, (_, i) => i);
+---
+<div id="streak">
+  <div class="streak-pin">
+    <div class="s-head">
+      <p class="eyebrow">{s.eyebrow}</p>
+      <h2>{s.headline}<br /><span class="grad">{s.headlineAccent}</span></h2>
+      <p class="lede">{s.lede}</p>
+    </div>
+
+    <div class="s-body">
+      <!-- Each square is a day. Scroll advances the calendar; the day
+           at data-miss stays dark and resets the counter. -->
+      <div class="grid" id="streak-grid" aria-hidden="true">
+        {days.map((d) => (
+          <span class:list={['d', d === s.missedDay && 'miss']} data-i={d}>
+            {d === s.missedDay ? '!' : ''}
+          </span>
+        ))}
+      </div>
+
+      <div class="readout">
+        <div class="ro">
+          <div class="ro-v"><span id="streak-count">0</span><span class="ro-u">days</span></div>
+          <div class="ro-l">{s.runningLabel} streak</div>
+        </div>
+        <div class="ro">
+          <div class="ro-v grad"><span id="streak-score">0</span><span class="ro-u">/100</span></div>
+          <div class="ro-l">{s.scoreLabel}</div>
+        </div>
+        <p class="s-note" id="streak-note" data-label={s.missedLabel}>&nbsp;</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  #streak{position:relative;height:340vh;z-index:2;}
+  .streak-pin{
+    position:sticky;top:0;height:100vh;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:var(--space-7);
+    overflow:hidden;padding:0 var(--space-4);text-align:center;
+  }
+  .s-head{max-width:640px;}
+  .s-head h2{font-size:clamp(26px,3.8vw,44px);}
+  .s-head .lede{margin:var(--space-4) auto 0;font-size:15px;}
+
+  .s-body{display:flex;align-items:center;gap:var(--space-8);flex-wrap:wrap;justify-content:center;}
+  .grid{
+    display:grid;grid-template-columns:repeat(9,1fr);gap:7px;
+    width:min(88vw,352px);
+  }
+  .d{
+    aspect-ratio:1;border-radius:8px;background:#141318;
+    border:1px solid #1F1E24;display:grid;place-items:center;
+    font-size:10px;font-weight:var(--fw-black);color:transparent;
+    transition:background .18s ease,border-color .18s ease,transform .18s cubic-bezier(.2,1.4,.4,1);
+  }
+  /* Filled by the scroll engine, which sets .on / .burn per square. */
+  .d:global(.on){
+    background:var(--app-grad);border-color:transparent;transform:scale(1.06);
+  }
+  .d:global(.burn){
+    background:#1A1216;border-color:rgba(255,75,75,.45);color:#FF6B6B;transform:none;
+  }
+
+  .readout{text-align:left;min-width:170px;}
+  .ro{margin-bottom:var(--space-5);}
+  .ro-v{
+    font-size:clamp(38px,5vw,58px);font-weight:var(--fw-black);line-height:1;
+    font-variant-numeric:tabular-nums;
+  }
+  .ro-v.grad{background:var(--app-grad-h);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .ro-u{font-size:.34em;color:var(--app-text-3);margin-left:6px;-webkit-text-fill-color:var(--app-text-3);}
+  .ro-l{
+    font-size:11px;font-weight:var(--fw-black);letter-spacing:1.4px;
+    text-transform:uppercase;color:var(--app-text-3);margin-top:6px;
+  }
+  .s-note{
+    font-size:13px;font-weight:var(--fw-extrabold);color:#FF6B6B;
+    min-height:18px;opacity:0;transition:opacity .2s;
+  }
+  .s-note:global(.on){opacity:1;}
+
+  @media (max-width:760px){
+    #streak{height:300vh;}
+    .streak-pin{gap:var(--space-6);}
+    .s-body{gap:var(--space-6);}
+    .grid{grid-template-columns:repeat(9,1fr);width:min(84vw,300px);gap:5px;}
+    .readout{text-align:center;display:flex;gap:var(--space-7);align-items:flex-start;justify-content:center;}
+    .ro{margin-bottom:0;}
+    .s-note{width:100%;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    #streak{height:auto;}
+    .streak-pin{position:static;height:auto;padding:80px var(--space-4);}
+    .d{background:var(--app-grad);border-color:transparent;}
+    .d.miss{background:#1A1216;border-color:rgba(255,75,75,.45);color:#FF6B6B;}
+  }
+</style>

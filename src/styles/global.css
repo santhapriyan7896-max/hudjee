@@ -1,0 +1,189 @@
+/* ════════════════════════════════════════════════════════════════
+   HudJee — global layer
+
+   tokens/colors|typography|spacing.css are copied verbatim from the
+   HudJee Design System export. tokens/theme-app.css then overrides
+   the parts the shipped app has moved past — see the note in that
+   file. Edit theme-app.css, not the DS files.
+   ════════════════════════════════════════════════════════════════ */
+@import './tokens/colors.css';
+@import './tokens/typography.css';
+@import './tokens/spacing.css';
+@import './tokens/theme-app.css';
+
+:root{
+  --font-display:'Nunito',system-ui,sans-serif;
+  --font-body:'Nunito',system-ui,sans-serif;
+  --font-question:'Montserrat',system-ui,sans-serif;
+  --max:1180px;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{-webkit-text-size-adjust:100%;background:var(--app-bg);}
+body{
+  font-family:var(--font-body);
+  background:var(--app-bg);
+  color:var(--app-text);
+  font-weight:var(--fw-semibold);
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body.is-locked{overflow:hidden;}
+a{color:inherit;text-decoration:none;}
+button,input,select{font-family:inherit;font-size:inherit;color:inherit;}
+img{display:block;max-width:100%;}
+::selection{background:var(--app-purple);color:#fff;}
+::-webkit-scrollbar{width:10px}
+::-webkit-scrollbar-track{background:var(--app-bg)}
+::-webkit-scrollbar-thumb{background:#2E2D33;border-radius:var(--radius-pill)}
+::-webkit-scrollbar-thumb:hover{background:#3A393F}
+
+.wrap{width:100%;max-width:var(--max);margin:0 auto;padding:0 var(--space-4);}
+.center{text-align:center;}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+
+/* ── Type ─────────────────────────────────────────────────────── */
+h1,h2,h3{font-family:var(--font-display);font-weight:var(--fw-black);line-height:1.06;letter-spacing:-.5px;}
+h2{font-size:clamp(30px,4.6vw,52px);}
+.eyebrow{
+  font-size:13px;font-weight:var(--fw-black);letter-spacing:1.6px;
+  text-transform:uppercase;margin-bottom:var(--space-3);
+  background:var(--app-grad-h);-webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.grad{
+  background:var(--app-grad-h);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.lede{
+  color:var(--app-text-2);font-size:16px;font-weight:var(--fw-bold);
+  max-width:560px;line-height:1.55;
+}
+.center .lede{margin-left:auto;margin-right:auto;}
+.sec-head{margin-bottom:56px;}
+section.pad{padding:120px 0;position:relative;z-index:2;}
+
+/* ── Buttons ──────────────────────────────────────────────────────
+   The app's signature CTA is a gradient *stroke* on a transparent
+   fill, not a gradient fill. Built with a two-layer background:
+   padding-box paints the interior, border-box paints the gradient
+   ring — this is the only way to gradient a border in CSS.
+   ──────────────────────────────────────────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);
+  font-family:var(--font-display);font-weight:var(--fw-extrabold);font-size:16px;
+  border-radius:var(--app-r-btn);padding:16px 28px;cursor:pointer;
+  white-space:nowrap;color:var(--app-text);
+  border:2px solid transparent;
+  transition:transform .14s cubic-bezier(.2,1.3,.4,1),box-shadow .2s,filter .2s;
+}
+.btn-primary{
+  background:
+    linear-gradient(var(--app-bg),var(--app-bg)) padding-box,
+    var(--app-grad) border-box;
+}
+.btn-primary:hover{
+  transform:translateY(-2px);
+  box-shadow:0 10px 30px rgba(123,104,232,.22),0 4px 18px rgba(201,161,124,.14);
+}
+.btn-primary:active{transform:translateY(0);}
+/* On a card surface the interior must match the card, not the page. */
+.on-card .btn-primary{
+  background:
+    linear-gradient(var(--app-card),var(--app-card)) padding-box,
+    var(--app-grad) border-box;
+}
+.btn-outline{
+  background:transparent;border:2px solid var(--app-card-border);color:var(--app-text-2);
+}
+.btn-outline:hover{border-color:#3A393F;color:var(--app-text);transform:translateY(-2px);}
+.btn-fill{ /* solid variant, for when a stroke isn't loud enough */
+  background:var(--app-grad);color:#0A0A0C;border-color:transparent;
+}
+.btn-fill:hover{transform:translateY(-2px);filter:brightness(1.06);}
+.btn-sm{padding:11px 20px;font-size:14px;}
+.btn[disabled]{opacity:.5;cursor:default;transform:none;}
+
+/* ── Cards — flat, hairline border, large radius ──────────────── */
+.card{
+  background:var(--app-card);
+  border:1px solid var(--app-card-border);
+  border-radius:var(--app-r-card);
+  padding:var(--space-5);
+}
+.card-tile{
+  background:var(--app-card);
+  border:1px solid var(--app-card-border);
+  border-radius:var(--app-r-tile);
+  padding:var(--space-4);
+}
+/* Gradient-ringed card — the app uses this for the active/selected state. */
+.card-active{
+  border:1px solid transparent;
+  background:
+    linear-gradient(var(--app-card),var(--app-card)) padding-box,
+    var(--app-grad) border-box;
+}
+.c-lbl{
+  color:var(--app-text-3);font-size:11px;font-weight:var(--fw-extrabold);
+  text-transform:uppercase;letter-spacing:.8px;
+}
+.c-val{font-size:16px;font-weight:var(--fw-black);margin-top:3px;}
+.ico-chip{
+  width:34px;height:34px;border-radius:var(--radius-circle);
+  background:var(--app-chip);display:grid;place-items:center;
+}
+
+/* ── Progress bar ─────────────────────────────────────────────── */
+.pbar{height:8px;background:#232227;border-radius:var(--radius-pill);overflow:hidden;margin-top:9px;}
+.pbar i{display:block;height:100%;border-radius:var(--radius-pill);background:var(--app-grad-h);}
+
+/* ── Tags ─────────────────────────────────────────────────────── */
+.tag{
+  padding:5px 11px;border-radius:var(--radius-pill);font-size:10px;
+  font-weight:var(--fw-extrabold);text-transform:uppercase;letter-spacing:.6px;
+  border:1px solid var(--app-card-border);color:var(--app-text-2);
+}
+.tag.grad-ring{
+  border-color:transparent;color:var(--app-text);
+  background:
+    linear-gradient(var(--app-card),var(--app-card)) padding-box,
+    var(--app-grad) border-box;
+}
+.tag.purple{border-color:rgba(123,104,232,.45);color:#A99BF2;background:rgba(123,104,232,.10);}
+.tag.amber{border-color:rgba(201,161,124,.45);color:#D9B694;background:rgba(201,161,124,.10);}
+
+/* ── Scroll-reveal primitives (toggled by src/scripts/scroll.ts) ─ */
+.rv{opacity:0;transform:translateY(24px);
+  transition:opacity .38s ease,transform .42s cubic-bezier(.2,1.25,.4,1);}
+.rv.in{opacity:1;transform:none;}
+.split .w{display:inline-block;overflow:hidden;vertical-align:top;}
+.split .w > i{display:inline-block;font-style:inherit;transform:translateY(110%);opacity:0;
+  transition:transform .42s cubic-bezier(.2,1.3,.4,1),opacity .3s;}
+.split.in .w > i{transform:none;opacity:1;}
+
+/* ── Ambient ──────────────────────────────────────────────────── */
+#glow{
+  position:fixed;width:760px;height:760px;left:0;top:0;margin:-380px 0 0 -380px;
+  border-radius:var(--radius-circle);pointer-events:none;z-index:1;
+  background:radial-gradient(circle,rgba(123,104,232,.11),rgba(201,161,124,.05) 46%,transparent 70%);
+  will-change:transform;
+}
+#prog{
+  position:fixed;top:0;left:0;height:3px;width:100%;transform-origin:0 50%;transform:scaleX(0);
+  background:var(--app-grad-h);z-index:9999;will-change:transform;
+}
+
+@media (max-width:600px){
+  section.pad{padding:80px 0;}
+  .btn{width:100%;}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms!important;animation-iteration-count:1!important;
+    transition-duration:.001ms!important;
+  }
+  .rv,.split .w > i{opacity:1!important;transform:none!important;}
+  #glow,#prog{display:none;}
+}

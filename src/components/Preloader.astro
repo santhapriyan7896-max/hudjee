@@ -1,0 +1,28 @@
+<div id="pre" aria-hidden="true">
+  <div class="pre-mark"><img src="/assets/logo-icon.png" alt="" width="53" height="53" /></div>
+  <div class="pre-bar"></div>
+</div>
+
+<style>
+  #pre{
+    position:fixed;inset:0;z-index:10000;background:#000;display:grid;place-items:center;
+    transition:opacity .45s ease,visibility .45s;
+  }
+  #pre:global(.done){opacity:0;visibility:hidden;}
+  .pre-mark{
+    width:74px;height:74px;border-radius:var(--radius-xl);display:grid;place-items:center;
+    background:linear-gradient(var(--app-bg),var(--app-bg)) padding-box, var(--app-grad) border-box;
+    border:2px solid transparent;
+    animation:preIn .34s cubic-bezier(.2,1.4,.4,1) both, preTap 1.4s ease-in-out .5s infinite;
+  }
+  .pre-mark img{width:38px;height:auto;}
+  @keyframes preIn{from{transform:scale(.5);opacity:0}to{transform:none;opacity:1}}
+  @keyframes preTap{0%,100%{transform:scale(1)}50%{transform:scale(.94)}}
+  .pre-bar{
+    position:absolute;bottom:0;left:0;height:4px;width:0;
+    background:var(--app-grad-h);
+    animation:preBar .9s ease-out forwards;
+  }
+  @keyframes preBar{to{width:100%}}
+  @media (prefers-reduced-motion:reduce){ #pre{display:none;} }
+</style>

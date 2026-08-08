@@ -1,0 +1,44 @@
+---
+import { how } from '../data/site';
+import Icon from './Icon.astro';
+---
+<section class="pad" id="how">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <p class="eyebrow">{how.eyebrow}</p>
+      <h2 data-split>{how.headline} <em class="grad">{how.headlineAccent}</em></h2>
+      <p class="lede">{how.lede}</p>
+    </div>
+    <div class="steps">
+      {how.steps.map((s, i) => (
+        <div class="step rv" style={`transition-delay:${i * 0.06}s`}>
+          <div class="num">{s.num}</div>
+          <div class="ico"><Icon name={s.icon} /></div>
+          <h3>{s.title}</h3>
+          <p>{s.body}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  h2 em{font-style:normal;}
+  .sec-head .lede{margin-top:var(--space-4);}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-4);}
+  .step{
+    background:var(--app-card);border-radius:var(--app-r-card);
+    border:1px solid var(--border-default);
+    padding:var(--space-6);position:relative;overflow:hidden;
+    transition:border-color .16s,opacity .38s ease,transform .42s cubic-bezier(.2,1.25,.4,1);
+  }
+  .step:hover{border-color:#33323A;}
+  .step .num{color:var(--app-purple);font-size:13px;font-weight:var(--fw-black);letter-spacing:1.6px;}
+  .step .ico{
+    width:48px;height:48px;border-radius:var(--radius-md);background:var(--app-elevated);
+    display:grid;place-items:center;margin:var(--space-4) 0;
+  }
+  .step h3{font-size:20px;margin-bottom:var(--space-2);}
+  .step p{color:var(--app-text-2);font-size:15px;font-weight:var(--fw-semibold);line-height:1.5;}
+  @media (max-width:960px){ .steps{grid-template-columns:1fr;} }
+</style>

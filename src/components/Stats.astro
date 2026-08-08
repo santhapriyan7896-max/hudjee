@@ -1,0 +1,31 @@
+---
+import { stats } from '../data/site';
+---
+<div class="band">
+  <div class="wrap stats">
+    {stats.map((s, i) => (
+      <div class="stat rv" style={`transition-delay:${i * 0.05}s`}>
+        <div class="n" data-count={s.count} data-prefix={s.prefix ?? ''} data-suffix={s.suffix ?? ''}>0</div>
+        <div class="l">{s.label}</div>
+      </div>
+    ))}
+  </div>
+</div>
+
+<style>
+  .band{
+    border-top:2px solid var(--app-card-border);border-bottom:2px solid var(--app-card-border);
+    background:#0D0D10;padding:56px 0;position:relative;z-index:2;
+  }
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-6);text-align:center;}
+  .stat .n{
+    font-size:clamp(32px,4.2vw,52px);font-weight:var(--fw-black);line-height:1;
+    background:linear-gradient(120deg,var(--app-grad-start),var(--app-grad-end));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .stat .l{
+    font-size:13px;color:var(--app-text-2);margin-top:var(--space-3);
+    font-weight:var(--fw-extrabold);text-transform:uppercase;letter-spacing:.8px;
+  }
+  @media (max-width:600px){ .stats{grid-template-columns:1fr 1fr;gap:var(--space-7);} }
+</style>

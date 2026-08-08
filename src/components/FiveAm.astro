@@ -1,0 +1,148 @@
+---
+import { fiveAm as f } from '../data/site';
+---
+<div id="clock">
+  <div class="clock-pin">
+    <p class="eyebrow">{f.eyebrow}</p>
+
+    <!-- Time scrubs 4:44 → 5:00 with scroll. Tabular numerals so the
+         digits don't jitter as they change. -->
+    <div class="time-wrap">
+      <div class="dial" aria-hidden="true">
+        <svg viewBox="0 0 240 240">
+          <circle cx="120" cy="120" r="112" fill="none" stroke="#1C1B21" stroke-width="2"></circle>
+          <circle id="dial-arc" cx="120" cy="120" r="112" fill="none" stroke="url(#dg)"
+                  stroke-width="2" stroke-linecap="round"
+                  stroke-dasharray="704" stroke-dashoffset="704"
+                  transform="rotate(-90 120 120)"></circle>
+          <defs><linearGradient id="dg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#7B68E8"></stop>
+            <stop offset="100%" stop-color="#C9A17C"></stop>
+          </linearGradient></defs>
+        </svg>
+      </div>
+      <div class="time"><span id="clock-time">4:44</span><span class="ampm"> AM</span></div>
+    </div>
+
+    <div class="phases">
+      {f.phases.map((p, i) => (
+        <div class:list={['phase', i === 0 && 'on']} data-phase={i}>
+          <h3 class="grad">{p.label}</h3>
+          <p>{p.body}</p>
+        </div>
+      ))}
+    </div>
+
+    <div class="slot">
+    <!-- Phase 2: the seven factors compute -->
+    <div class="engine" id="engine">
+      {f.factors.map((x) => (
+        <div class="ef" data-fill={x.fill}>
+          <span class="efn">{x.name}</span>
+          <span class="eft"><i></i></span>
+          <span class="efw">{x.weight}%</span>
+        </div>
+      ))}
+    </div>
+
+    <!-- Phase 3: the result -->
+    <div class="result" id="result">
+      <div class="rscore"><span id="clock-score">0</span><span class="rden">/100</span></div>
+      <div class="rmeta">
+        <span class="rlabel">Readiness Score</span>
+        <span class="rdelta" id="clock-delta">▲ 87 ranks overnight</span>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  #clock{position:relative;height:320vh;z-index:2;}
+  .clock-pin{
+    position:sticky;top:0;height:100vh;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;overflow:hidden;text-align:center;
+    padding:0 var(--space-4);
+  }
+  .eyebrow{margin-bottom:var(--space-6);}
+
+  .time-wrap{position:relative;display:grid;place-items:center;width:240px;height:240px;}
+  .dial{position:absolute;inset:0;}
+  .dial svg{width:100%;height:100%;}
+  .time{
+    font-size:clamp(46px,7vw,74px);font-weight:var(--fw-black);letter-spacing:-2px;
+    font-variant-numeric:tabular-nums;line-height:1;
+    background:var(--app-grad-h);-webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .ampm{font-size:.4em;letter-spacing:0;}
+
+  .phases{position:relative;height:104px;width:min(92vw,560px);margin-top:var(--space-6);}
+  .phase{
+    position:absolute;inset:0;opacity:0;transform:translateY(14px);
+    transition:opacity .3s,transform .36s cubic-bezier(.2,1.25,.4,1);
+  }
+  .phase:global(.on){opacity:1;transform:none;}
+  .phase h3{font-size:clamp(22px,3.2vw,34px);margin-bottom:var(--space-2);}
+  .phase p{color:var(--app-text-2);font-size:15px;font-weight:var(--fw-bold);}
+
+  /* Engine and result occupy one fixed slot so nothing reflows when
+     the sequence switches phase. */
+  .slot{position:relative;width:min(92vw,460px);height:190px;margin-top:var(--space-5);}
+  .engine,.result{
+    position:absolute;inset:0;
+    opacity:0;transform:translateY(12px);
+    transition:opacity .3s,transform .36s cubic-bezier(.2,1.25,.4,1);
+  }
+  .engine{display:grid;gap:7px;align-content:center;}
+  .result{display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .engine:global(.on),.result:global(.on){opacity:1;transform:none;}
+
+  .ef{display:grid;grid-template-columns:92px 1fr 34px;align-items:center;gap:var(--space-3);}
+  .efn{font-size:12px;font-weight:var(--fw-extrabold);color:var(--app-text-2);text-align:left;}
+  .efw{font-size:11px;font-weight:var(--fw-black);color:var(--app-text-3);text-align:right;}
+  .eft{height:7px;background:#1C1B21;border-radius:var(--radius-pill);overflow:hidden;}
+  .eft i{display:block;height:100%;width:0;border-radius:var(--radius-pill);background:var(--app-grad-h);}
+
+  .rscore{
+    font-size:clamp(58px,9vw,92px);font-weight:var(--fw-black);line-height:1;
+    font-variant-numeric:tabular-nums;
+    background:var(--app-grad-h);-webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .rden{font-size:.3em;color:var(--app-text-3);-webkit-text-fill-color:var(--app-text-3);}
+  .rmeta{display:flex;flex-direction:column;gap:4px;margin-top:var(--space-2);}
+  .rlabel{font-size:12px;font-weight:var(--fw-black);letter-spacing:1.4px;text-transform:uppercase;color:var(--app-text-3);}
+  .rdelta{font-size:14px;font-weight:var(--fw-black);color:var(--app-success);}
+
+  /* Short laptop viewports: the sequence is ~620px tall, so shrink
+     the dial and the slot rather than let the pin clip. */
+  @media (max-height:800px){
+    .time-wrap{width:200px;height:200px;}
+    .time{font-size:clamp(40px,6vw,58px);}
+    .phases{height:92px;margin-top:var(--space-4);}
+    .slot{height:168px;margin-top:var(--space-3);}
+    .eyebrow{margin-bottom:var(--space-4);}
+  }
+  @media (max-height:680px){
+    .time-wrap{width:164px;height:164px;}
+    .slot{height:150px;}
+    .ef{grid-template-columns:80px 1fr 30px;}
+  }
+
+  @media (max-width:600px){
+    #clock{height:280vh;}
+    .time-wrap{width:190px;height:190px;}
+    .phases{height:120px;}
+    .slot{height:172px;margin-top:var(--space-4);}
+    .ef{grid-template-columns:78px 1fr 30px;gap:var(--space-2);}
+  }
+  @media (prefers-reduced-motion:reduce){
+    #clock{height:auto;}
+    .clock-pin{position:static;height:auto;padding:80px var(--space-4);}
+    .phases{height:auto;}
+    .phase{position:static;opacity:1;transform:none;margin-bottom:var(--space-5);}
+    .slot{height:auto;}
+    .engine,.result{opacity:1;transform:none;position:static;margin-bottom:var(--space-6);}
+    .eft i{width:var(--f,70%);}
+    .dial{display:none;}
+  }
+</style>

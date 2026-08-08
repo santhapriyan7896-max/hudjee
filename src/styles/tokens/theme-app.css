@@ -1,0 +1,55 @@
+/* ═══════════════════════════════════════════════════════════════════
+   HudJee — live app theme (sampled from the shipped dashboard).
+
+   The app has moved on from the design-system export in
+   ./colors.css: the mint→cyan gradient and the "3D pressed"
+   border-bottom depth are gone, replaced by a purple→amber gradient
+   used as a STROKE, flat cards with a 1px hairline border, and
+   larger corner radii.
+
+   This file is imported after the DS tokens and overrides them, so
+   it is the source of truth until the design system is re-exported.
+   ═══════════════════════════════════════════════════════════════════ */
+:root{
+  /* ── Surfaces ── */
+  --app-bg:#0A0A0C;            /* page */
+  --app-card:#131217;          /* every card */
+  --app-card-border:#27262B;   /* 1px hairline */
+  --app-elevated:#1E1D22;      /* day chips, inner wells */
+  --app-chip:#2A2A2E;          /* icon chips */
+  --app-nav-pill:#242426;
+
+  /* ── Text ── */
+  --app-text:#FFFFFF;
+  --app-text-2:#ABABB3;
+  --app-text-3:#75787F;
+
+  /* ── Signature gradient: purple → warm amber, used as a stroke ── */
+  --app-grad-start:#7B68E8;
+  --app-grad-end:#C9A17C;
+  --app-grad:linear-gradient(135deg,var(--app-grad-start),var(--app-grad-end));
+  --app-grad-h:linear-gradient(90deg,var(--app-grad-start),var(--app-grad-end));
+  --app-purple:#7B68E8;
+  --app-amber:#C9A17C;
+
+  /* ── Status (unchanged from the DS) ── */
+  --app-success:#4ADE80;
+  --app-error:#FF4B4B;
+  --app-correct:#34D399;
+
+  /* ── Radii — larger and softer than the DS export ── */
+  --app-r-card:22px;
+  --app-r-tile:18px;
+  --app-r-btn:14px;
+  --app-r-chip:14px;
+
+  /* ── Semantic aliases consumed by global.css and components ── */
+  --surface-page:var(--app-bg);
+  --surface-card:var(--app-card);
+  --surface-card-elevated:var(--app-elevated);
+  --border-subtle:var(--app-card-border);
+  --border-default:var(--app-card-border);
+  --text-primary:var(--app-text);
+  --text-secondary:var(--app-text-2);
+  --text-tertiary:var(--app-text-3);
+}

@@ -1,0 +1,368 @@
+---
+import { waitlistForm as f } from '../data/site';
+const proof = f.socialProof;
+---
+<div class="waitlist">
+  <form class="wl" novalidate>
+    <div class="form-row">
+      <div class="field f-name">
+        <label class="visually-hidden" for="wl-name">Your name</label>
+        <input id="wl-name" type="text" name="name" placeholder={f.namePlaceholder}
+               autocomplete="given-name" required enterkeyhint="next" />
+      </div>
+      <div class="field batch">
+        <label class="visually-hidden" for="wl-batch">{f.batchLabel}</label>
+        <select id="wl-batch" name="batch">
+          <option value="">{f.batchLabel}</option>
+          {f.batches.map((b) => <option value={b.value}>{b.label}</option>)}
+        </select>
+      </div>
+      <div class="field f-email">
+        <label class="visually-hidden" for="wl-email">Email address</label>
+        <input id="wl-email" type="email" name="email" placeholder={f.emailPlaceholder}
+               autocomplete="email" required enterkeyhint="go"
+               aria-describedby="wl-msg" />
+        <span class="tick" aria-hidden="true">
+          <svg viewBox="0 0 20 20" width="15" height="15"><path d="M4 10.5l4 4 8-9"
+            fill="none" stroke="currentColor" stroke-width="2.4"
+            stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+      </div>
+      <!-- Honeypot: bots fill it, humans never see it. -->
+      <input type="text" name="company" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+      <button type="submit" class="btn btn-primary">
+        <span class="btn-label">{f.submit}</span>
+        <span class="spinner" aria-hidden="true"></span>
+      </button>
+    </div>
+    <p class="form-msg" id="wl-msg" role="status" aria-live="polite"></p>
+    <p class="form-note">{f.note}</p>
+  </form>
+
+  <div class="sent-card" role="status">
+    <div class="sent-mark" aria-hidden="true">
+      <svg viewBox="0 0 52 52" width="34" height="34">
+        <circle class="sm-ring" cx="26" cy="26" r="23" fill="none" stroke="currentColor" stroke-width="3"/>
+        <path class="sm-tick" d="M15 27l8 8 15-16" fill="none" stroke="currentColor"
+              stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h3>{f.successTitle}</h3>
+    <p class="sent-pos" id="wl-position" hidden></p>
+    <p>{f.successBody}</p>
+  </div>
+</div>
+
+{proof && (
+  <div class="proof" id="proof" hidden
+       data-offset={proof.offset} data-min={proof.minToShow}
+       data-fallback={proof.fallbackCount} data-poll={proof.pollMs}
+       data-suffix={proof.suffix} data-suffix-one={proof.suffixOne}>
+    <div class="avatars" aria-hidden="true">
+      <span class="a1">R</span><span class="a2">A</span><span class="a3">S</span><span class="a4">K</span>
+    </div>
+    <p class="proof-text">
+      <span class="live" aria-hidden="true"></span>
+      <b id="wl-count">0</b> <span id="wl-suffix">{proof.suffix}</span>
+    </p>
+  </div>
+)}
+
+<script>
+  import { submitWaitlist, isValidEmail, fetchWaitlistCount } from '../lib/waitlist';
+  import { waitlistForm as copy } from '../data/site';
+
+  document.querySelectorAll<HTMLFormElement>('form.wl').forEach((form) => {
+    const msg = form.querySelector<HTMLElement>('.form-msg')!;
+    const btn = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
+    const email = form.querySelector<HTMLInputElement>('input[type=email]')!;
+    const name = form.querySelector<HTMLInputElement>('input[name=name]')!;
+    const field = email.closest('.field')!;
+    const label = btn.querySelector<HTMLElement>('.btn-label')!;
+    const original = label.textContent ?? '';
+    let touched = false;
+
+    const setError = (text: string) => {
+      msg.className = 'form-msg err';
+      msg.textContent = text;
+      email.setAttribute('aria-invalid', 'true');
+      field.classList.remove('valid');
+      field.classList.add('invalid');
+    };
+    const clearError = () => {
+      msg.className = 'form-msg';
+      msg.textContent = '';
+      email.removeAttribute('aria-invalid');
+      field.classList.remove('invalid');
+    };
+
+    /* Validate live, but only after the first blur — nagging someone
+       mid-way through typing their address is obnoxious. */
+    email.addEventListener('blur', () => {
+      touched = true;
+      const v = email.value.trim();
+      if (!v) { clearError(); field.classList.remove('valid'); return; }
+      if (isValidEmail(v)) { clearError(); field.classList.add('valid'); }
+      else setError(copy.errorInvalid);
+    });
+    email.addEventListener('input', () => {
+      if (!touched) return;
+      const v = email.value.trim();
+      if (isValidEmail(v)) { clearError(); field.classList.add('valid'); }
+      else field.classList.remove('valid');
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = new FormData(form);
+      // Honeypot tripped — pretend it worked, write nothing.
+      if ((data.get('company') as string)?.length) { form.classList.add('sent'); return; }
+
+      const who = String(data.get('name') ?? '').trim();
+      const value = String(data.get('email') ?? '').trim();
+      touched = true;
+      if (!who) { setError(copy.errorNameEmpty); name.focus(); return; }
+      if (!value) { setError(copy.errorEmpty); email.focus(); return; }
+      if (!isValidEmail(value)) { setError(copy.errorInvalid); email.focus(); return; }
+
+      clearError();
+      btn.disabled = true;
+      form.classList.add('busy');
+      label.textContent = copy.submitting;
+
+      const res = await submitWaitlist({
+        name: who,
+        email: value,
+        batch: (data.get('batch') as string) || null,
+        source: 'landing',
+      });
+
+      btn.disabled = false;
+      form.classList.remove('busy');
+      label.textContent = original;
+
+      if (res.ok) {
+        form.classList.add('sent');
+
+        const pos = document.getElementById('wl-position');
+        if (pos && res.position) {
+          pos.textContent = `${copy.positionPrefix}${res.position.toLocaleString('en-IN')} ${copy.positionSuffix}`;
+          pos.hidden = false;
+        }
+        document.dispatchEvent(new CustomEvent('waitlist:joined'));
+        // Move focus to the confirmation so screen readers announce it.
+        form.nextElementSibling?.querySelector('h3')?.setAttribute('tabindex', '-1');
+        (form.nextElementSibling?.querySelector('h3') as HTMLElement | null)?.focus();
+      } else {
+        setError(res.reason === 'duplicate' ? copy.errorDuplicate : copy.errorGeneric);
+        email.focus();
+      }
+    });
+  });
+
+  /* ────────────────────────────────────────────────────────────────
+     Live signup counter.
+
+     Polls a security-definer RPC rather than opening a websocket —
+     a Realtime subscription would pull in ~30 KB of client just to
+     watch one integer, which is a bad trade on a landing page.
+     Tab-aware: polling pauses when the page is hidden.
+     ──────────────────────────────────────────────────────────────── */
+  (() => {
+    const box = document.getElementById('proof');
+    const out = document.getElementById('wl-count');
+    if (!box || !out) return;
+
+    const offset   = Number(box.dataset.offset ?? 0);
+    const min      = Number(box.dataset.min ?? 0);
+    const fallback = Number(box.dataset.fallback ?? 0);
+    const pollMs   = Number(box.dataset.poll ?? 0);
+    const reduce   = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const suffixEl = document.getElementById('wl-suffix');
+    const many = box.dataset.suffix ?? '';
+    const one = box.dataset.suffixOne ?? many;
+    const setSuffix = (n: number) => {
+      if (suffixEl) suffixEl.textContent = n === 1 ? one : many;
+    };
+
+    let shown = 0;
+    let raf = 0;
+
+    /** Roll the number rather than snapping it. */
+    const animateTo = (target: number) => {
+      if (reduce) { shown = target; out.textContent = target.toLocaleString('en-IN'); setSuffix(target); return; }
+      cancelAnimationFrame(raf);
+      // First paint counts up from zero; later updates tick quickly.
+      const from = shown;
+      const dur = from === 0 ? 900 : 420;
+      let t0 = 0;
+      const step = (ts: number) => {
+        if (!t0) t0 = ts;
+        const p = Math.min((ts - t0) / dur, 1);
+        const v = Math.round(from + (target - from) * (1 - Math.pow(1 - p, 3)));
+        out.textContent = v.toLocaleString('en-IN');
+        setSuffix(v);
+        if (p < 1) raf = requestAnimationFrame(step);
+        else shown = target;
+      };
+      raf = requestAnimationFrame(step);
+    };
+
+    const render = (real: number | null) => {
+      // Demo mode (no Supabase env) falls back to the placeholder.
+      if (real === null) { box.hidden = false; animateTo(fallback); return; }
+      if (real < min) { box.hidden = true; return; }   // too few to be persuasive
+      box.hidden = false;
+      animateTo(real + offset);
+    };
+
+    const tick = async () => render(await fetchWaitlistCount());
+
+    tick();
+    if (pollMs > 0) {
+      let timer = window.setInterval(() => { if (!document.hidden) tick(); }, pollMs);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+      window.addEventListener('pagehide', () => clearInterval(timer));
+    }
+
+    // Own signup bumps the number immediately, before the next poll.
+    document.addEventListener('waitlist:joined', () => {
+      if (!box.hidden) animateTo(shown + 1);
+    });
+  })();
+</script>
+
+<style>
+  .waitlist{max-width:520px;margin:0 auto;}
+  /* Explicit grid: email + batch share row 1, the CTA spans row 2 at
+     full width. Flex-wrap was letting the button drop onto its own
+     line at content width, which read as an afterthought. */
+  .form-row{display:grid;grid-template-columns:1fr 150px;gap:10px;}
+  .f-name{grid-column:1;}
+  .batch{grid-column:2;}
+  .f-email,.form-row .btn{grid-column:1 / -1;}
+  .form-row .btn{width:100%;}
+  .field{position:relative;}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;}
+
+  .field input,.field select{
+    width:100%;padding:16px;background:var(--app-bg);
+    border:1px solid var(--app-card-border);
+    border-radius:var(--app-r-btn);outline:none;font-weight:var(--fw-bold);
+    transition:border-color .14s,box-shadow .14s;
+  }
+  .field input::placeholder{color:var(--app-text-3);}
+  .field input:focus,.field select:focus{
+    border-color:var(--app-purple);box-shadow:0 0 0 3px rgba(123,104,232,.16);
+  }
+  .field.invalid input{border-color:var(--app-error);}
+  .field.invalid input:focus{box-shadow:0 0 0 3px rgba(255,75,75,.16);}
+  .field.valid input{border-color:rgba(74,222,128,.5);padding-right:42px;}
+
+  /* Green tick appears once the address parses. */
+  .tick{
+    position:absolute;right:14px;top:50%;transform:translateY(-50%) scale(.6);
+    color:var(--app-success);opacity:0;pointer-events:none;
+    transition:opacity .16s,transform .22s cubic-bezier(.2,1.5,.4,1);
+  }
+  .field.valid .tick{opacity:1;transform:translateY(-50%) scale(1);}
+
+  .field select{
+    appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:40px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2375787F' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 16px center;
+  }
+  .field select option{background:#141318;color:#fff;}
+
+  /* Button spinner while the request is in flight. */
+  .btn{
+    position:relative;padding:17px 28px;font-size:16px;
+    /* A faint gradient wash inside the ring so the primary action
+       doesn't read as secondary against the filled inputs. */
+    background:
+      linear-gradient(var(--app-card),var(--app-card)) padding-box,
+      var(--app-grad) border-box;
+    box-shadow:inset 0 0 0 100px rgba(123,104,232,.05);
+  }
+  .btn:hover{box-shadow:inset 0 0 0 100px rgba(123,104,232,.10),0 8px 26px rgba(123,104,232,.18);}
+  .spinner{
+    position:absolute;width:17px;height:17px;border-radius:50%;
+    border:2px solid rgba(255,255,255,.25);border-top-color:#fff;
+    opacity:0;animation:spin .7s linear infinite;
+  }
+  form:global(.busy) .spinner{opacity:1;}
+  form:global(.busy) .btn-label{opacity:.35;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .form-msg{margin-top:var(--space-3);font-size:14px;font-weight:var(--fw-extrabold);min-height:20px;}
+  .form-msg:global(.err){color:var(--app-error);}
+  .form-note{
+    font-size:13px;color:var(--app-text-3);
+    margin-top:var(--space-3);font-weight:var(--fw-semibold);
+  }
+
+  form:global(.sent){display:none;}
+  .sent-card{
+    display:none;padding:var(--space-6);border-radius:var(--app-r-card);
+    background:var(--app-card);border:1px solid rgba(74,222,128,.35);
+    animation:popIn .34s cubic-bezier(.2,1.4,.4,1);
+  }
+  @keyframes popIn{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
+  form:global(.sent) + .sent-card{display:block;}
+  .sent-card h3{font-size:20px;margin-bottom:var(--space-1);outline:none;}
+  .sent-card p{color:var(--app-text-2);font-size:15px;font-weight:var(--fw-semibold);}
+  .sent-pos{
+    font-size:17px;font-weight:var(--fw-black);margin-bottom:var(--space-2);
+    background:var(--app-grad-h);-webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+
+  /* The tick draws itself in, rather than just appearing. */
+  .sent-mark{color:var(--app-success);margin-bottom:var(--space-3);}
+  .sm-ring{stroke-dasharray:145;stroke-dashoffset:145;animation:draw .5s .05s ease-out forwards;}
+  .sm-tick{stroke-dasharray:40;stroke-dashoffset:40;animation:draw .3s .38s ease-out forwards;}
+  @keyframes draw{to{stroke-dashoffset:0}}
+
+  .proof{
+    display:flex;align-items:center;justify-content:center;
+    gap:var(--space-4);margin-top:var(--space-6);flex-wrap:wrap;
+  }
+  .avatars{display:flex;}
+  .avatars span{
+    width:34px;height:34px;border-radius:var(--radius-circle);border:3px solid var(--app-card);
+    margin-left:-11px;display:grid;place-items:center;
+    font-size:12px;font-weight:var(--fw-black);color:#0A0A0C;
+  }
+  .avatars span:first-child{margin-left:0;}
+  .a1{background:linear-gradient(135deg,#7B68E8,#A99BF2);}
+  .a2{background:linear-gradient(135deg,#C9A17C,#E0BE9B);}
+  .a3{background:linear-gradient(135deg,#A99BF2,#C9A17C);}
+  .a4{background:linear-gradient(135deg,#7B68E8,#C9A17C);}
+  .proof-text{
+    font-size:14px;color:var(--app-text-2);font-weight:var(--fw-bold);
+    display:inline-flex;align-items:center;gap:7px;
+  }
+  /* Live dot — signals the number is real, not decoration. */
+  .live{
+    width:7px;height:7px;border-radius:50%;background:var(--app-success);
+    box-shadow:0 0 0 0 rgba(74,222,128,.5);animation:livePulse 2.4s infinite;flex-shrink:0;
+  }
+  @keyframes livePulse{
+    0%{box-shadow:0 0 0 0 rgba(74,222,128,.5)}
+    70%{box-shadow:0 0 0 7px rgba(74,222,128,0)}
+    100%{box-shadow:0 0 0 0 rgba(74,222,128,0)}
+  }
+  #wl-count{font-variant-numeric:tabular-nums;}
+  .proof-text :global(b){
+    background:var(--app-grad-h);-webkit-background-clip:text;background-clip:text;
+    color:transparent;font-weight:var(--fw-black);
+  }
+  @media (max-width:560px){
+    .form-row{grid-template-columns:1fr;}
+    .f-name,.batch{grid-column:1;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .sm-ring,.sm-tick{stroke-dashoffset:0;animation:none;}
+    .spinner{animation:none;}
+  }
+</style>

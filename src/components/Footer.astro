@@ -1,0 +1,24 @@
+---
+import { footer } from '../data/site';
+const year = new Date().getFullYear();
+---
+<footer>
+  <div class="wrap foot">
+    <img src="/assets/hudjee-logo.png" alt="HudJee" width="194" height="46" />
+    <div>© {year} {footer.legal}</div>
+    <div class="links">{footer.links.map((l) => <a href={l.href}>{l.label}</a>)}</div>
+  </div>
+</footer>
+
+<style>
+  footer{
+    border-top:2px solid var(--app-card-border);padding:var(--space-7) 0;
+    color:var(--app-text-3);font-size:13px;font-weight:var(--fw-semibold);
+    position:relative;z-index:2;
+  }
+  .foot{display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);flex-wrap:wrap;}
+  .foot img{height:18px;width:auto;opacity:.75;}
+  .links{display:flex;gap:var(--space-5);}
+  .links a{color:var(--app-text-2);}
+  .links a:hover{color:var(--app-purple);}
+</style>

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://hudjee.app/sitemap-index.xml
