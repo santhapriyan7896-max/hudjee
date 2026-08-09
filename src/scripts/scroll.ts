@@ -43,6 +43,7 @@ export function initScroll() {
   initReveals();
   initCounters();
   initFaq();
+  initFooter();
 
   if (reduce) return;
 
@@ -85,6 +86,10 @@ export function initScroll() {
 
   // --- TOOLS ---
   initTools();
+
+  // --- DRIFTING SHAPE FIELDS ---
+  initDecor('#streak', 300);
+  initDecor('#score', 220);
 
   // --- STREAK ---
   const streakSec = $('#streak');
@@ -154,6 +159,17 @@ export function initScroll() {
   const factors = $('#factors');
   if (factors) {
     const bars = Array.from(factors.querySelectorAll<HTMLElement>('i[data-w]'));
+
+    /* Rows land one after another before the bars start filling, so the
+       panel assembles rather than appearing all at once. */
+    gsap.from(factors.querySelectorAll('.factor'), {
+      opacity: 0,
+      x: -18,
+      duration: 0.5,
+      stagger: 0.06,
+      ease: 'power3.out',
+      scrollTrigger: { trigger: factors, start: 'top 82%', once: true },
+    });
     ScrollTrigger.create({
       trigger: factors,
       start: "top 80%",
@@ -268,6 +284,59 @@ function initHero() {
   tl.call(() => {
     gsap.to('.deco-pinwheel', { rotation: 360, duration: 26, repeat: -1, ease: 'none' });
     gsap.to('.deco-squiggle', { y: -16, rotation: -7, duration: 5, repeat: -1, yoyo: true, ease: 'sine.inOut' });
+  });
+}
+
+/* ── Drifting shape fields ───────────────────────────────────────────────
+ *
+ *  Any section holding `.deco > .deco-in` spans gets the same treatment.
+ *  Three motions across two elements so they never fight: the outer span
+ *  carries the scroll parallax, the inner one pops in on arrival and then
+ *  floats forever.
+ *
+ *  `lift` is how far the fastest shape travels over the section — give a
+ *  tall pinned section more than a short one, or the drift is invisible.
+ * ─────────────────────────────────────────────────────────────────────── */
+function initDecor(selector: string, lift = 300) {
+  const sec = document.querySelector<HTMLElement>(selector);
+  if (!sec) return;
+
+  const decos = Array.from(sec.querySelectorAll<HTMLElement>('.deco'));
+  if (!decos.length) return;
+
+  decos.forEach((d, i) => {
+    const inner = d.firstElementChild as HTMLElement | null;
+    if (!inner) return;
+
+    gsap.timeline({ scrollTrigger: { trigger: sec, start: 'top 75%', once: true } })
+      .from(inner, {
+        opacity: 0, scale: 0, rotation: -150,
+        duration: 0.9, ease: 'back.out(1.5)', delay: i * 0.07,
+      })
+      /* Each on its own clock, or they bob in unison and look mechanical. */
+      .to(inner, {
+        y: i % 2 ? 18 : -20,
+        rotation: i % 2 ? -7 : 8,
+        duration: 4 + (i % 5) * 0.65,
+        repeat: -1, yoyo: true, ease: 'sine.inOut',
+      });
+  });
+
+  /* Lifted against the scroll — the varying speeds are the whole effect,
+     so keep the numbers in the markup spread out. */
+  ScrollTrigger.create({
+    trigger: sec,
+    start: 'top bottom',
+    end: 'bottom top',
+    scrub: 0.6,
+    onUpdate: (self) => {
+      for (const d of decos) {
+        const speed = parseFloat(d.dataset.speed || '1');
+        const spin = parseFloat(d.dataset.spin || '0');
+        d.style.transform =
+          `translate3d(0,${-self.progress * lift * speed}px,0) rotate(${self.progress * spin}deg)`;
+      }
+    },
   });
 }
 
@@ -620,8 +689,17 @@ function initReveals() {
     if (el.closest('#hero')) return; // hero reveals fire after the preloader
 
     if (el.hasAttribute('data-split') || el.classList.contains('split')) {
-      const split = new SplitText(el, { type: "words, chars" });
-      gsap.fromTo(split.chars, {
+      /* .grad paints its text with a gradient via background-clip:text.
+         Splitting it puts every glyph inside an inline-block child, and a
+         parent's text clip cannot reach into those — the children inherit
+         a transparent colour with no background of their own and the whole
+         gradient half of the heading disappears. So leave .grad whole and
+         animate it as one piece alongside the characters. */
+      const split = new SplitText(el, { type: 'words, chars', ignore: '.grad' });
+      const grad = Array.from(el.querySelectorAll<HTMLElement>('.grad'));
+      const targets = [...(split.chars as HTMLElement[]), ...grad];
+
+      gsap.fromTo(targets, {
         opacity: 0,
         y: 50,
         rotateX: -90,
@@ -701,5 +779,24 @@ function initFaq() {
         b.setAttribute('aria-expanded', 'true');
       }
     });
+  });
+}
+
+/* ── Footer ───────────────────────────────────────────────────── */
+function initFooter() {
+  const footCols = document.querySelectorAll('.foot-col');
+  if (!footCols.length) return;
+  
+  gsap.from(footCols, {
+    y: 40,
+    opacity: 0,
+    duration: 0.8,
+    stagger: 0.1,
+    ease: 'power3.out',
+    scrollTrigger: {
+      trigger: '#footer',
+      start: 'top 95%',
+      once: true
+    }
   });
 }

@@ -1,7 +1,49 @@
 ---
 import { score } from '../data/site';
+
+/* Shapes drifting behind the panel. `at` is a percentage of the section,
+   `speed` how hard it lifts against the scroll. */
+const DECOR = [
+  { shape: 'ring',     left: '4%',  top: '14%', size: 74,  speed: 1.2,  spin: 46,  rot: 0 },
+  { shape: 'asterisk', left: '52%', top: '8%',  size: 62,  speed: 1.5,  spin: -70, rot: 0 },
+  /* Keep these off the right edge — the section clips its overflow, and a
+     shape sitting on the boundary reads as a rendering fault. */
+  { shape: 'crescent', left: '90%', top: '26%', size: 92,  speed: 0.6,  spin: 30,  rot: 14 },
+  { shape: 'diamond',  left: '46%', top: '88%', size: 56,  speed: 1.35, spin: 64,  rot: 0 },
+  { shape: 'squiggle', left: '9%',  top: '82%', size: 70,  speed: 0.8,  spin: -30, rot: -8 },
+  { shape: 'arch',     left: '92%', top: '80%', size: 88,  speed: 1.05, spin: 22,  rot: 8 },
+];
+
+const SHAPES: Record<string, string> = {
+  ring: `<svg viewBox="0 0 100 100" fill="none">
+    <circle cx="50" cy="50" r="34" stroke="url(#scBrand)" stroke-width="17"/></svg>`,
+  asterisk: `<svg viewBox="0 0 100 100" fill="none">
+    <path d="M50 8v84M13.6 29l72.8 42M86.4 29l-72.8 42"
+      stroke="url(#scCoral)" stroke-width="16" stroke-linecap="round"/></svg>`,
+  crescent: `<svg viewBox="0 0 100 100" fill="none">
+    <circle cx="50" cy="50" r="33" stroke="url(#scPink)" stroke-width="26"
+      stroke-linecap="round" stroke-dasharray="152 208" transform="rotate(125 50 50)"/></svg>`,
+  diamond: `<svg viewBox="0 0 100 100">
+    <rect x="27" y="27" width="46" height="46" rx="11" fill="url(#scBrand)" transform="rotate(45 50 50)"/></svg>`,
+  squiggle: `<svg viewBox="0 0 100 120" fill="none">
+    <path d="M24 108c42-6 18-30 54-38-40-6-14-30-52-38" stroke="url(#scViolet)"
+      stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  arch: `<svg viewBox="0 0 100 100">
+    <path d="M6 96V50a44 44 0 0 1 88 0v46H66V50a22 22 0 0 0-44 0v46z" fill="url(#scBlue)"/></svg>`,
+};
 ---
 <section class="pad" id="score">
+  <div class="sc-decor" aria-hidden="true">
+    {DECOR.map((d) => (
+      <span class="deco" data-speed={d.speed} data-spin={d.spin}
+        style={`left:${d.left};top:${d.top};--size:${d.size}px`}>
+        <span class="deco-in" style={`--rot:${d.rot}deg`}>
+          <Fragment set:html={SHAPES[d.shape]} />
+        </span>
+      </span>
+    ))}
+  </div>
+
   <div class="wrap cps-grid">
     <div class="rv">
       <p class="eyebrow">{score.eyebrow}</p>
@@ -9,6 +51,7 @@ import { score } from '../data/site';
       <p class="lede">{score.lede}</p>
       <a href={score.cta.href} class="btn btn-primary">{score.cta.label}</a>
     </div>
+
     <div class="factors rv" id="factors">
       {score.factors.map((f) => (
         <div class="factor">
@@ -19,25 +62,72 @@ import { score } from '../data/site';
       ))}
     </div>
   </div>
+
+  <svg class="sc-sprite" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="scBrand" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#7B68E8"/><stop offset="100%" stop-color="#C9A17C"/>
+      </linearGradient>
+      <linearGradient id="scCoral" x1="100%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#FFCBA6"/><stop offset="100%" stop-color="#FF5F5F"/>
+      </linearGradient>
+      <linearGradient id="scPink" x1="100%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#E0409E"/><stop offset="100%" stop-color="#FFC7EF"/>
+      </linearGradient>
+      <linearGradient id="scViolet" x1="0%" y1="100%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#7B5CF0"/><stop offset="100%" stop-color="#F09BD8"/>
+      </linearGradient>
+      <linearGradient id="scBlue" x1="0%" y1="100%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#4FD8F5"/>
+        <stop offset="55%" stop-color="#C9A8FF"/>
+        <stop offset="100%" stop-color="#FFB1E6"/>
+      </linearGradient>
+    </defs>
+  </svg>
 </section>
 
 <style>
+  #score{position:relative;overflow:hidden;}
   h2 em{font-style:normal;}
-  .cps-grid{display:grid;grid-template-columns:.92fr 1.08fr;gap:64px;align-items:center;}
+  .cps-grid{
+    position:relative;z-index:2;
+    display:grid;grid-template-columns:.92fr 1.08fr;gap:64px;align-items:center;
+  }
   .lede{margin:var(--space-4) 0 var(--space-7);}
+
+  /* Flat tinted panel, matching the step cards and the streak calendar. */
   .factors{
-    background:var(--app-card);border-radius:var(--app-r-card);
+    background:#17151F;border-radius:26px;
     padding:var(--space-6);display:grid;gap:var(--space-4);
   }
   .factor{display:grid;grid-template-columns:116px 1fr 44px;align-items:center;gap:var(--space-4);font-size:14px;}
   .factor .fn{font-weight:var(--fw-extrabold);}
   .factor .fw{color:var(--app-purple);text-align:right;font-weight:var(--fw-black);font-size:14px;}
   .ftrack{height:10px;background:#232227;border-radius:var(--radius-pill);overflow:hidden;}
+
+  /* ── Drifting shapes ─────────────────────────────────────────── */
+  .sc-decor{position:absolute;inset:0;pointer-events:none;z-index:1;}
+  .sc-sprite{position:absolute;width:0;height:0;}
+  .deco{
+    position:absolute;
+    width:calc(var(--size) * var(--k, 1));
+    height:calc(var(--size) * var(--k, 1));
+    margin:calc(var(--size) * var(--k, 1) / -2) 0 0 calc(var(--size) * var(--k, 1) / -2);
+    will-change:transform;
+  }
+  .deco-in{
+    display:block;width:100%;height:100%;transform:rotate(var(--rot));
+    filter:drop-shadow(0 14px 26px rgba(0,0,0,.5));
+  }
+  .deco :global(svg){width:100%;height:100%;display:block;}
   .ftrack i{
     display:block;height:100%;width:0;border-radius:var(--radius-pill);will-change:width;
     background:linear-gradient(90deg,var(--app-grad-start),var(--app-grad-end));
   }
-  @media (max-width:960px){ .cps-grid{grid-template-columns:1fr;gap:40px;} }
+  @media (max-width:960px){ .cps-grid{grid-template-columns:1fr;gap:40px;} .deco{--k:.6;} }
   @media (max-width:600px){ .factor{grid-template-columns:92px 1fr 40px;gap:10px;font-size:13px;} }
-  @media (prefers-reduced-motion:reduce){ .ftrack i{width:var(--w,100%);} }
+  @media (prefers-reduced-motion:reduce){
+    .ftrack i{width:var(--w,100%);}
+    .sc-decor{display:none;}
+  }
 </style>

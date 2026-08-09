@@ -83,13 +83,37 @@ const brace = `<svg viewBox="0 0 18 100" preserveAspectRatio="none" fill="none">
 
     <div class="h-cta">
       <a href={hero.secondaryCta.href} class="h-link">{hero.secondaryCta.label}</a>
-      <a href={hero.primaryCta.href} class="h-btn">
-        {hero.primaryCta.label}
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <circle cx="12" cy="12" r="10.5" stroke="currentColor" stroke-width="1.5"/>
-          <path d="M12 7v10m0 0 4-4m-4 4-4-4" stroke="currentColor" stroke-width="1.5"
-            stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+      <a href={hero.primaryCta.href} class="h-btn" data-burst>
+        <span class="b-words">
+          {hero.primaryCta.label.split(' ').map((w) => <span class="b-w">{w}</span>)}
+        </span>
+
+        {/* The ring stays put; the arrow inside drops out of the bottom and
+            a second one takes its place from above. */}
+        <span class="b-arrow" aria-hidden="true">
+          <svg class="b-ring" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10.5" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <span class="b-clip">
+            <svg class="b-tick" viewBox="0 0 24 24" fill="none">
+              <path d="M12 6v11m0 0 4.5-4.5M12 17l-4.5-4.5" stroke="currentColor"
+                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <svg class="b-tick" viewBox="0 0 24 24" fill="none">
+              <path d="M12 6v11m0 0 4.5-4.5M12 17l-4.5-4.5" stroke="currentColor"
+                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </span>
+
+        <span class="b-confetti" aria-hidden="true">
+          <span class="cf"><svg viewBox="0 0 40 40"><g fill="#38B6FF"><path d="M20 20 21.2 2.7A17.3 17.3 0 0 1 37.3 18.8Z"/><path d="M20 20 37.3 21.2A17.3 17.3 0 0 1 21.2 37.3Z"/><path d="M20 20 18.8 37.3A17.3 17.3 0 0 1 2.7 21.2Z"/><path d="M20 20 2.7 18.8A17.3 17.3 0 0 1 18.8 2.7Z"/></g></svg></span>
+          <span class="cf"><svg viewBox="0 0 40 40"><g fill="#FF8F00"><circle cx="20" cy="9" r="9"/><circle cx="31" cy="20" r="9"/><circle cx="20" cy="31" r="9"/><circle cx="9" cy="20" r="9"/></g></svg></span>
+          <span class="cf"><svg viewBox="0 0 40 40"><rect x="7" y="7" width="26" height="26" rx="5" fill="#FFB1E6"/></svg></span>
+          <span class="cf"><svg viewBox="0 0 40 40" fill="none"><path d="M20 3v34M5.3 11.5l29.4 17M34.7 11.5l-29.4 17" stroke="#0AE448" stroke-width="6" stroke-linecap="round"/></svg></span>
+          <span class="cf"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="11" fill="#A99BF2"/></svg></span>
+          <span class="cf"><svg viewBox="0 0 40 40"><rect x="9" y="9" width="22" height="22" rx="4" fill="#4FD8F5" transform="rotate(45 20 20)"/></svg></span>
+        </span>
       </a>
     </div>
   </div>
@@ -196,15 +220,37 @@ const brace = `<svg viewBox="0 0 18 100" preserveAspectRatio="none" fill="none">
     border-bottom:1px solid var(--app-card-border);padding-bottom:2px;transition:color .18s,border-color .18s;
   }
   .h-link:hover{color:var(--hero-ink);border-color:var(--hero-ink);}
+  /* overflow stays visible so the confetti can leave the pill. */
   .h-btn{
-    display:inline-flex;align-items:center;gap:10px;white-space:nowrap;
+    position:relative;
+    display:inline-flex;align-items:center;gap:12px;white-space:nowrap;
     padding:15px 26px;border-radius:var(--radius-pill);
     border:1.5px solid #2FCB63;color:var(--hero-ink);
     font-family:var(--font-display);font-weight:var(--fw-extrabold);font-size:16px;
-    transition:background .18s,transform .14s cubic-bezier(.2,1.3,.4,1);
+    transition:background .18s;
   }
-  .h-btn svg{width:20px;height:20px;}
-  .h-btn:hover{background:rgba(47,203,99,.12);transform:translateY(-2px);}
+  .h-btn:hover{background:rgba(47,203,99,.12);}
+
+  .b-words{display:inline-flex;gap:.34em;}
+  .b-w{display:inline-block;will-change:transform;}
+
+  /* Ring and arrow are separate layers: the ring holds still while the
+     clipped strip behind it swaps one arrow for the next. */
+  .b-arrow{position:relative;display:block;width:20px;height:20px;}
+  .b-ring{position:absolute;inset:0;width:100%;height:100%;}
+  .b-clip{position:absolute;inset:0;overflow:hidden;border-radius:var(--radius-circle);}
+  .b-tick{position:absolute;inset:0;width:100%;height:100%;}
+  .b-tick:nth-child(2){transform:translateY(-100%);}
+
+  /* Launch point — bottom-centre of the pill, behind it. */
+  .b-confetti{position:absolute;left:50%;top:52%;width:0;height:0;z-index:-1;}
+  .cf{position:absolute;left:0;top:0;width:22px;height:22px;margin:-11px 0 0 -11px;opacity:0;}
+  .cf svg{width:100%;height:100%;display:block;}
+  .cf:nth-child(2){width:17px;height:17px;margin:-8.5px 0 0 -8.5px;}
+  .cf:nth-child(3){width:14px;height:14px;margin:-7px 0 0 -7px;}
+  .cf:nth-child(4){width:19px;height:19px;margin:-9.5px 0 0 -9.5px;}
+  .cf:nth-child(5){width:12px;height:12px;margin:-6px 0 0 -6px;}
+  .cf:nth-child(6){width:15px;height:15px;margin:-7.5px 0 0 -7.5px;}
 
   /* Hidden until the build runs. Undone below when motion is reduced. */
   .h-title,.deco,.hero-badge,.h-foot{opacity:0;}

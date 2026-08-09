@@ -360,9 +360,38 @@ export const waitlistForm = {
 
 export const footer = {
   legal: 'HudJee · Practice Daily.',
-  links: [
-    { label: 'FAQ', href: '#faq' },
-    { label: 'Privacy', href: '#' },
-    { label: 'Contact', href: 'mailto:hello@hudjee.app' },
-  ],
+  columns: [
+    {
+      title: 'Product', color: '#3FD97B', // Green
+      links: [
+        { label: 'Features', href: '#feat' },
+        { label: 'How it works', href: '#how' },
+        { label: 'Pricing', href: '#' },
+      ]
+    },
+    {
+      title: 'Resources', color: '#FFB1E6', // Pink
+      links: [
+        { label: 'FAQ', href: '#faq' },
+        { label: 'Support', href: '#' },
+        { label: 'Blog', href: '#' },
+      ]
+    },
+    {
+      title: 'Company', color: '#FF8F00', // Orange
+      links: [
+        { label: 'About Us', href: '#' },
+        { label: 'Careers', href: '#' },
+        { label: 'Contact', href: 'mailto:hello@hudjee.app' },
+      ]
+    },
+    {
+      title: 'Legal', color: '#A99BF2', // Purple
+      links: [
+        { label: 'Terms of Service', href: '#' },
+        { label: 'Privacy Policy', href: '#' },
+        { label: 'Cookie Policy', href: '#' },
+      ]
+    }
+  ]
 };
