@@ -1,0 +1,162 @@
+---
+/**
+ * ────────────────────────────────────────────────────────────────
+ *  Tools — stacked rows, hairline ruled, each with a big gradient
+ *  shape on the left and a title, a line and a link on the right.
+ *
+ *  Replaced the 4:45 AM clock sequence. Rows come from data/site.ts;
+ *  the reveal is in scripts/scroll.ts.
+ * ────────────────────────────────────────────────────────────────
+ */
+import { tools } from '../data/site';
+
+/* Each shape is drawn into a 300×300 box and scaled by the column width.
+   Where a shape is more than one element, the gradient below is declared
+   in userSpaceOnUse so the ramp runs across the whole box once — with the
+   default objectBoundingBox every piece restarts its own ramp and the
+   seams between them show. */
+const SHAPES: Record<string, string> = {
+  /* An arch on two legs. */
+  arch: `<path d="M10 290V150a140 140 0 0 1 280 0v140h-88V150a52 52 0 0 0-104 0v140z" fill="url(#tPink)"/>`,
+  /* One square, one corner swept all the way round. */
+  notch: `<path d="M40 10h224a30 30 0 0 1 30 30v220a30 30 0 0 1-30 30H160A150 150 0 0 1 10 160V40a30 30 0 0 1 30-30z" fill="url(#tOrange)"/>`,
+  /* A circle and a block on the same diagonal, clear of each other —
+     they must not touch, or the tangent reads as a dent rather than
+     two deliberate pieces. */
+  stack: `<g fill="url(#tPurple)">
+    <circle cx="88" cy="88" r="78"/>
+    <rect x="150" y="150" width="140" height="140" rx="26"/>
+  </g>`,
+  /* Five squares in a quincunx. */
+  grid: `<g fill="url(#tCyan)">
+    <rect x="10" y="10" width="112" height="112" rx="3"/>
+    <rect x="178" y="10" width="112" height="112" rx="3"/>
+    <rect x="94" y="94" width="112" height="112" rx="3"/>
+    <rect x="10" y="178" width="112" height="112" rx="3"/>
+    <rect x="178" y="178" width="112" height="112" rx="3"/>
+  </g>`,
+};
+
+const brace = `<svg viewBox="0 0 18 100" preserveAspectRatio="none" fill="none" aria-hidden="true">
+  <path d="M15 1C8 1 10 9 10 21c0 15-8 22-8 29s8 14 8 29c0 12-2 20 5 20"
+    stroke="currentColor" stroke-width="1.6" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+</svg>`;
+---
+<section id="tools">
+  <div class="tools-in">
+    <span class="t-label">
+      <span class="brace brace-l"><Fragment set:html={brace} /></span>
+      {tools.label}
+      <span class="brace brace-r"><Fragment set:html={brace} /></span>
+    </span>
+
+    {tools.rows.map((r) => (
+      <article class="t-row">
+        <div class="t-art">
+          <svg viewBox="0 0 300 300" fill="none" aria-hidden="true">
+            <Fragment set:html={SHAPES[r.shape]} />
+          </svg>
+        </div>
+        <div class="t-copy">
+          <h3 class:list={['t-title', `is-${r.accent}`]}>{r.title}</h3>
+          <p class="t-body">{r.body}</p>
+          <a class="t-btn" href={r.href}>
+            {r.cta}
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M5 12h13m0 0-5-5m5 5-5 5" stroke="currentColor" stroke-width="1.6"
+                stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+        </div>
+      </article>
+    ))}
+  </div>
+
+  <svg class="t-sprite" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="tPink" gradientUnits="userSpaceOnUse" x1="10" y1="290" x2="290" y2="10">
+        <stop offset="0%" stop-color="#4FD8F5"/>
+        <stop offset="55%" stop-color="#C9A8FF"/>
+        <stop offset="100%" stop-color="#FFB1E6"/>
+      </linearGradient>
+      <linearGradient id="tOrange" gradientUnits="userSpaceOnUse" x1="10" y1="290" x2="290" y2="10">
+        <stop offset="0%" stop-color="#FFD1A8"/><stop offset="100%" stop-color="#FF7A00"/>
+      </linearGradient>
+      <linearGradient id="tPurple" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="290" y2="290">
+        <stop offset="0%" stop-color="#C6B6FF"/><stop offset="100%" stop-color="#7B5CF0"/>
+      </linearGradient>
+      <linearGradient id="tCyan" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="290" y2="290">
+        <stop offset="0%" stop-color="#CFF6FF"/><stop offset="100%" stop-color="#22C9F0"/>
+      </linearGradient>
+    </defs>
+  </svg>
+</section>
+
+<style>
+  #tools{
+    --t-ink:#F4EFE2;
+    position:relative;z-index:2;padding:clamp(70px,9vw,120px) 4vw;
+  }
+  .t-sprite{position:absolute;width:0;height:0;}
+  .tools-in{max-width:1240px;margin:0 auto;}
+
+  .t-label{
+    position:relative;display:inline-block;padding:10px 38px;
+    color:var(--t-ink);font-size:24px;font-weight:var(--fw-black);
+    letter-spacing:.4px;margin-bottom:clamp(30px,4vw,56px);
+  }
+  .brace{position:absolute;top:0;bottom:0;width:24px;color:var(--t-ink);}
+  .brace :global(svg){width:100%;height:100%;display:block;}
+  .brace-l{left:0;}
+  .brace-r{right:0;transform:scaleX(-1);}
+
+  /* Shape column is fixed-ish so every row's copy starts on the same
+     vertical line — that alignment is most of what makes the list read
+     as a list rather than four unrelated blocks. */
+  .t-row{
+    display:grid;grid-template-columns:clamp(150px,20vw,270px) 1fr;
+    gap:clamp(28px,6vw,90px);align-items:center;
+    padding:clamp(38px,5.5vw,68px) 0;
+    border-top:1px solid var(--app-card-border);
+  }
+  .t-row:last-child{border-bottom:1px solid var(--app-card-border);}
+
+  .t-art{width:100%;}
+  .t-art svg{width:100%;height:auto;display:block;}
+
+  .t-title{
+    font-family:var(--font-display);font-weight:var(--fw-black);
+    font-size:clamp(22px,2.4vw,32px);letter-spacing:-.02em;margin-bottom:clamp(18px,2.4vw,34px);
+  }
+  .is-pink  {color:#FFB1E6;}
+  .is-orange{color:#FF8F00;}
+  .is-purple{color:#A99BF2;}
+  .is-cyan  {color:#5FD8F5;}
+
+  .t-body{
+    color:var(--t-ink);font-family:var(--font-display);font-weight:500;
+    font-size:clamp(19px,2.3vw,31px);line-height:1.24;letter-spacing:-.02em;
+    max-width:22ch;margin-bottom:clamp(20px,2.6vw,34px);
+  }
+
+  .t-btn{
+    display:inline-flex;align-items:center;gap:9px;
+    padding:12px 24px;border-radius:var(--radius-pill);
+    border:1.5px solid var(--app-card-border);color:var(--t-ink);
+    font-weight:var(--fw-extrabold);font-size:15px;white-space:nowrap;
+    transition:border-color .18s,background .18s,transform .14s cubic-bezier(.2,1.3,.4,1);
+  }
+  .t-btn svg{width:18px;height:18px;transition:transform .18s;}
+  .t-btn:hover{border-color:var(--t-ink);background:rgba(244,239,226,.06);transform:translateY(-2px);}
+  .t-btn:hover svg{transform:translateX(3px);}
+
+  @media (max-width:760px){
+    .t-row{grid-template-columns:1fr;gap:26px;}
+    .t-art{width:min(58%,220px);}
+    .t-body{max-width:none;}
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .t-art,.t-copy{opacity:1!important;transform:none!important;}
+  }
+</style>

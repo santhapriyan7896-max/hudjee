@@ -13,13 +13,19 @@ import { nav } from '../data/site';
 
   <!-- The Main Navbar -->
   <div class="wrap nav-in">
-    <a class="brand" href="#top" aria-label="HudJee — home">
-      <img src="/assets/new-logo.png" alt="HudJee" class="brand-img" />
-    </a>
-    <nav class="nav-links" aria-label="Primary">
-      {nav.links.map((l) => <a href={l.href}>{l.label}</a>)}
+    <div class="nav-left">
+      <a class="brand" href="#top" aria-label="HudJee — home">
+        <img src="/logo.png" alt="HudJee" class="brand-img" />
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        {nav.links.map((l) => <a href={l.href}>{l.label}</a>)}
+      </nav>
+    </div>
+    
+    <div class="nav-right">
+      <a href="#waitlist" class="nav-login">Login/Create Account</a>
       <a href={nav.cta.href} class="btn-nav-outline">{nav.cta.label}</a>
-    </nav>
+    </div>
   </div>
 </header>
 
@@ -30,15 +36,13 @@ import { nav } from '../data/site';
     left: 0;
     right: 0;
     z-index: 900;
-    border-bottom: 1px solid transparent;
-    transition: background 0.3s, border-color 0.3s, transform 0.3s;
+    background: #111111;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
   }
   
-  .nav:global(.stuck) {
-    background: rgba(14, 16, 15, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom-color: rgba(255,255,255,0.05);
+  .nav:global(.hide) {
+    transform: translateY(-100%);
   }
 
   /* Banner Styles */
@@ -54,7 +58,17 @@ import { nav } from '../data/site';
     font-weight: 700;
     text-decoration: none;
     letter-spacing: -0.01em;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, height 0.3s, padding 0.3s, opacity 0.2s;
+    height: 40px;
+    overflow: hidden;
+  }
+  
+  .nav:global(.stuck) .nav-banner {
+    height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+    pointer-events: none;
   }
   
   .nav-banner:hover {
@@ -71,10 +85,16 @@ import { nav } from '../data/site';
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 80px; /* Taller like GSAP */
-    max-width: 1300px; /* Match hero grid */
+    height: 70px;
+    max-width: 1400px; 
     margin: 0 auto;
     padding: 0 var(--space-5);
+  }
+
+  .nav-left, .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 32px;
   }
 
   /* Brand / Logo */
@@ -85,7 +105,7 @@ import { nav } from '../data/site';
   }
   
   .brand-img {
-    height: 38px;
+    height: 28px; /* Slightly smaller to match GSAP header proportion */
     width: auto;
     object-fit: contain;
   }
@@ -97,17 +117,21 @@ import { nav } from '../data/site';
     gap: 32px;
   }
 
-  .nav-links a:not(.btn-nav-outline) {
-    color: #A1A1AA;
-    font-size: 16px;
+  .nav-links a, .nav-login {
+    color: #c4c4c4;
+    font-size: 14px;
     font-weight: 600;
     font-family: var(--font-display);
     text-decoration: none;
     transition: color 0.2s;
   }
 
-  .nav-links a:not(.btn-nav-outline):hover {
-    color: #F4F4EB;
+  .nav-links a:hover, .nav-login:hover {
+    color: #ffffff;
+  }
+  
+  .nav-login {
+    margin-right: 8px;
   }
 
   /* Outline CTA Button matching GSAP */
@@ -115,15 +139,14 @@ import { nav } from '../data/site';
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 10px 24px;
+    padding: 8px 22px;
     border-radius: 50px;
-    border: 2px solid #F4F4EB;
+    border: 1px solid #F4F4EB;
     color: #F4F4EB;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
     text-decoration: none;
     transition: all 0.2s;
-    margin-left: 16px;
   }
 
   .btn-nav-outline:hover {
@@ -132,8 +155,9 @@ import { nav } from '../data/site';
   }
 
   @media (max-width: 960px) {
-    .nav-links a:not(.btn-nav-outline) { display: none; }
-    .nav-in { height: 70px; }
-    .btn-nav-outline { margin-left: 0; }
+    .nav-links { display: none; }
+    .nav-in { height: 60px; gap: 16px; }
+    .nav-left, .nav-right { gap: 16px; }
+    .nav-login { display: none; }
   }
 </style>
