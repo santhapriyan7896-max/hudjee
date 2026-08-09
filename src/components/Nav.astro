@@ -1,31 +1,139 @@
 ---
 import { nav } from '../data/site';
 ---
-<header class="nav">
+<header class="nav" id="main-nav">
+  <!-- The Green Announcement Banner -->
+  <a href="#waitlist" class="nav-banner">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+    </svg>
+    <span>HudJee is launching soon! <u>Pre-register now for early access.</u></span>
+  </a>
+
+  <!-- The Main Navbar -->
   <div class="wrap nav-in">
     <a class="brand" href="#top" aria-label="HudJee — home">
-      <img src="/assets/hudjee-logo.png" alt="HudJee" width="194" height="46" />
+      <img src="/assets/new-logo.png" alt="HudJee" class="brand-img" />
     </a>
     <nav class="nav-links" aria-label="Primary">
       {nav.links.map((l) => <a href={l.href}>{l.label}</a>)}
-      <a href={nav.cta.href} class="btn btn-primary btn-sm">{nav.cta.label}</a>
+      <a href={nav.cta.href} class="btn-nav-outline">{nav.cta.label}</a>
     </nav>
   </div>
 </header>
 
 <style>
-  .nav{
-    position:fixed;top:0;left:0;right:0;z-index:900;
-    border-bottom:2px solid transparent;
-    transition:background .25s,border-color .25s;
+  .nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 900;
+    border-bottom: 1px solid transparent;
+    transition: background 0.3s, border-color 0.3s, transform 0.3s;
   }
-  .nav:global(.stuck){background:#000;border-bottom-color:var(--app-card-border);}
-  .nav-in{display:flex;align-items:center;justify-content:space-between;height:72px;}
-  .brand img{height:24px;width:auto;}
-  .nav-links{display:flex;align-items:center;gap:var(--space-7);}
-  .nav-links a:not(.btn){
-    color:var(--app-text-2);font-size:14px;font-weight:var(--fw-bold);transition:color .12s;
+  
+  .nav:global(.stuck) {
+    background: rgba(14, 16, 15, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom-color: rgba(255,255,255,0.05);
   }
-  .nav-links a:not(.btn):hover{color:var(--app-text);}
-  @media (max-width:960px){ .nav-links a:not(.btn){display:none;} }
+
+  /* Banner Styles */
+  .nav-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background-color: #0AE448; /* GSAP Green */
+    color: #0E100F; /* Dark text */
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    letter-spacing: -0.01em;
+    transition: background-color 0.2s;
+  }
+  
+  .nav-banner:hover {
+    background-color: #0bd143; /* slightly darker on hover */
+  }
+
+  .nav-banner u {
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 2px;
+  }
+
+  /* Nav Inner */
+  .nav-in {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 80px; /* Taller like GSAP */
+    max-width: 1300px; /* Match hero grid */
+    margin: 0 auto;
+    padding: 0 var(--space-5);
+  }
+
+  /* Brand / Logo */
+  .brand {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+  }
+  
+  .brand-img {
+    height: 38px;
+    width: auto;
+    object-fit: contain;
+  }
+
+  /* Links */
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+  }
+
+  .nav-links a:not(.btn-nav-outline) {
+    color: #A1A1AA;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: var(--font-display);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:not(.btn-nav-outline):hover {
+    color: #F4F4EB;
+  }
+
+  /* Outline CTA Button matching GSAP */
+  .btn-nav-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 24px;
+    border-radius: 50px;
+    border: 2px solid #F4F4EB;
+    color: #F4F4EB;
+    font-size: 15px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s;
+    margin-left: 16px;
+  }
+
+  .btn-nav-outline:hover {
+    background: #F4F4EB;
+    color: #0E100F;
+  }
+
+  @media (max-width: 960px) {
+    .nav-links a:not(.btn-nav-outline) { display: none; }
+    .nav-in { height: 70px; }
+    .btn-nav-outline { margin-left: 0; }
+  }
 </style>

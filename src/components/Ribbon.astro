@@ -1,0 +1,202 @@
+---
+/**
+ * ────────────────────────────────────────────────────────────────
+ *  Ribbon — one sentence that scrolls sideways while the section
+ *  is pinned. Driven from src/scripts/scroll.ts (`--- RIBBON ---`).
+ *
+ *  Three layers move at different rates, which is what gives it
+ *  depth: the shapes drift slowest, the sentence tracks scroll 1:1,
+ *  and each character brightens and rises as it crosses the middle
+ *  of the screen. Copy and shape placement live in data/site.ts.
+ * ────────────────────────────────────────────────────────────────
+ */
+import { ribbon } from '../data/site';
+
+/* Same sentence as one string — read by screen readers, and shown
+   as an ordinary paragraph when the visitor asks for reduced motion. */
+const plain = ribbon.line.map((i) => i.text ?? i.chip).join(' ');
+
+/* Shape geometry. Gradients are declared once in the sprite below and
+   referenced by url(), so nothing here carries an id worth colliding. */
+const SHAPES: Record<string, string> = {
+  /* Bezier ease curve with its handles — the GSAP signature. */
+  ease: `<svg viewBox="0 0 120 100" fill="none" preserveAspectRatio="xMidYMid meet">
+    <path d="M10 16h100M10 84h100" stroke="#EDE6D3" stroke-opacity=".45" stroke-width="2" stroke-dasharray="5 7"/>
+    <path d="M10 84C46 84 74 16 110 16" stroke="#F4EFE2" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="10" cy="16" r="6" fill="#3FD97B"/>
+    <circle cx="110" cy="84" r="6" fill="#3FD97B"/>
+    <rect x="103" y="9" width="14" height="14" rx="3" fill="#7BF5A4"/>
+    <rect x="3" y="77" width="14" height="14" rx="3" fill="#7BF5A4"/>
+  </svg>`,
+  /* The same widget pulled into a U — an ease that dips and comes back. */
+  arc: `<svg viewBox="0 0 120 100" fill="none" preserveAspectRatio="xMidYMid meet">
+    <path d="M16 14v70M104 14v70" stroke="#EDE6D3" stroke-opacity=".45" stroke-width="2" stroke-dasharray="5 7"/>
+    <path d="M16 14C16 78 104 78 104 14" stroke="#F4EFE2" stroke-width="5" stroke-linecap="round"/>
+    <rect x="9" y="7" width="14" height="14" rx="3" fill="#7BF5A4"/>
+    <rect x="97" y="7" width="14" height="14" rx="3" fill="#7BF5A4"/>
+    <circle cx="16" cy="84" r="6" fill="#3FD97B"/>
+    <circle cx="104" cy="84" r="6" fill="#3FD97B"/>
+  </svg>`,
+  asterisk: `<svg viewBox="0 0 100 100" fill="none" preserveAspectRatio="xMidYMid meet">
+    <path d="M50 10v80M10 50h80M21.7 21.7l56.6 56.6M78.3 21.7L21.7 78.3"
+      stroke="url(#ribRed)" stroke-width="15" stroke-linecap="round"/>
+  </svg>`,
+  crescent: `<svg viewBox="0 0 100 100" fill="none" preserveAspectRatio="xMidYMid meet">
+    <circle cx="50" cy="50" r="33" stroke="url(#ribPink)" stroke-width="27"
+      stroke-linecap="round" stroke-dasharray="152 208" transform="rotate(125 50 50)"/>
+  </svg>`,
+  blob: `<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+    <path d="M6 96V50a44 44 0 0 1 88 0v46H66V50a22 22 0 0 0-44 0v46z" fill="url(#ribBlue)"/>
+  </svg>`,
+  diamond: `<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+    <rect x="27" y="27" width="46" height="46" rx="11" fill="url(#ribPurple)" transform="rotate(45 50 50)"/>
+  </svg>`,
+  pin: `<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+    <path d="M50 95c-24-26-30-36-30-49a30 30 0 0 1 60 0c0 13-6 23-30 49z" fill="url(#ribPurple)"/>
+  </svg>`,
+};
+---
+<section id="ribbon">
+  <p class="rib-plain">{plain}</p>
+
+  <div class="rib-track" id="rib-track" aria-hidden="true">
+    <div class="rib-decor">
+      {ribbon.decor.map((d) => (
+        <span
+          class="deco"
+          data-speed={d.speed}
+          data-spin={d.spin}
+          style={`left:${d.at * 100}%;top:${d.top};--size:${d.size}px`}
+        >
+          <span class="deco-in" style={`--rot:${d.rot}deg`}>
+            <Fragment set:html={SHAPES[d.shape]} />
+          </span>
+        </span>
+      ))}
+    </div>
+
+    <div class="rib-line" id="rib-line">
+      {ribbon.line.map((i) =>
+        i.chip ? (
+          <b
+            class:list={['chip', `chip-${i.color}`]}
+            data-rot={i.rot ?? 0}
+            data-row={i.row ?? 0}
+          >{i.chip}</b>
+        ) : (
+          <span class="w">{i.text}</span>
+        ),
+      )}
+    </div>
+  </div>
+
+  <!-- Gradients only. Kept out of the flow so the shapes above can share them. -->
+  <svg class="rib-sprite" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="ribRed" x1="100%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#FFD1A8"/><stop offset="100%" stop-color="#FF4D6D"/>
+      </linearGradient>
+      <linearGradient id="ribPink" x1="100%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#E0409E"/><stop offset="100%" stop-color="#FFC7EF"/>
+      </linearGradient>
+      <linearGradient id="ribBlue" x1="0%" y1="100%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#4FD8F5"/>
+        <stop offset="55%" stop-color="#C9A8FF"/>
+        <stop offset="100%" stop-color="#FFB1E6"/>
+      </linearGradient>
+      <linearGradient id="ribPurple" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#C6B6FF"/><stop offset="100%" stop-color="#6C4BE8"/>
+      </linearGradient>
+    </defs>
+  </svg>
+</section>
+
+<style>
+  #ribbon{
+    position:relative;height:100vh;overflow:hidden;z-index:2;
+    /* Cream, not white — the chips are dark-on-bright and white would
+       out-shout them. Matches the reference. */
+    --rib-ink:#F4EFE2;
+    --rib-dim:#4A4952;
+  }
+
+  .rib-sprite{position:absolute;width:0;height:0;}
+
+  /* The moving layer. Width is set by the sentence, so it runs off-screen
+     to the right and JS translates it left as you scroll. */
+  .rib-track{
+    position:absolute;left:0;top:0;height:100%;
+    display:flex;align-items:center;padding:0 8vw;
+    will-change:transform;
+  }
+
+  .rib-line{
+    display:flex;align-items:center;gap:.3em;white-space:nowrap;
+    font-family:var(--font-display);font-weight:800;
+    font-size:clamp(44px,7.6vw,108px);
+    line-height:1;letter-spacing:-.035em;
+    color:var(--rib-dim);
+  }
+  /* SplitText writes these; the per-character paint in scroll.ts then
+     drives colour and transform from the character's position on screen. */
+  .rib-line :global(.w > span){transform-origin:50% 100%;will-change:transform;}
+
+  /* ── Keyword chips ─────────────────────────────────────────────
+     Hard offset shadow rather than a blur — that flat, printed look
+     is what makes them read as stickers laid over the sentence. */
+  .chip{
+    display:inline-block;padding:.08em .3em .16em;border-radius:.16em;
+    color:#0E100F;font-weight:800;
+    box-shadow:8px 10px 0 rgba(0,0,0,.5);
+    will-change:transform,opacity;
+  }
+  .chip-green {background:#3FD97B;}
+  .chip-pink  {background:#FFB1E6;}
+  .chip-orange{background:#FF8F00;}
+  .chip-purple{background:#A99BF2;}
+  .chip-cream {background:#F4EFE2;}
+
+  /* ── Floating shapes ───────────────────────────────────────────
+     .deco carries the parallax offset from JS; .deco-in carries the
+     idle float, so the two never overwrite each other. */
+  .rib-decor{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;}
+  .deco{
+    /* --k lets the breakpoint shrink every shape without touching the
+       per-shape --size coming from data/site.ts. */
+    position:absolute;
+    width:calc(var(--size) * var(--k, 1));
+    height:calc(var(--size) * var(--k, 1));
+    margin:calc(var(--size) * var(--k, 1) / -2) 0 0 calc(var(--size) * var(--k, 1) / -2);
+    will-change:transform;
+  }
+  .deco-in{
+    display:block;width:100%;height:100%;transform:rotate(var(--rot));
+    filter:drop-shadow(0 18px 34px rgba(0,0,0,.55));
+  }
+  .deco :global(svg){width:100%;height:100%;display:block;}
+
+  /* Screen-reader copy of the sentence. */
+  .rib-plain{
+    position:absolute;width:1px;height:1px;overflow:hidden;
+    clip:rect(0 0 0 0);white-space:nowrap;
+  }
+
+  @media (max-width:900px){
+    .rib-track{padding:0 12vw;}
+    .chip{box-shadow:5px 6px 0 rgba(0,0,0,.5);}
+    .deco{--k:.66;}
+  }
+
+  /* No sideways scroll to opt into — just read the sentence. */
+  @media (prefers-reduced-motion:reduce){
+    #ribbon{height:auto;padding:110px var(--space-5);overflow:visible;}
+    .rib-track{display:none;}
+    .rib-plain{
+      position:static;width:auto;height:auto;clip:auto;white-space:normal;
+      max-width:1100px;margin:0 auto;text-align:center;
+      font-family:var(--font-display);font-weight:800;
+      font-size:clamp(28px,4.4vw,52px);line-height:1.12;letter-spacing:-.03em;
+      color:var(--rib-ink);
+    }
+  }
+</style>

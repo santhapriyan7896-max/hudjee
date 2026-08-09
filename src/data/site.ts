@@ -29,13 +29,27 @@ export const nav = {
 export const hero = {
   badge: 'Private beta · 2027 & 2028 batches',
 
-  /* Headline is split so the second half can carry the gradient.
+  /* The headline assembles character by character on load, so both lines
+     have to stay short — much past ten characters and the type has to
+     shrink to fit. Line one sits flush left, line two flush right.
      Alternates, if you want a different angle:
-       'Consistency is the whole game.' / 'We just keep score.'
-       'Show up daily.'                 / 'The scoreboard remembers.'
-       'Stop studying blind.'           / 'Start keeping score.'          */
-  headline: '20 questions a day.',
-  headlineAccent: "Every day. That's it.",
+       'Show up'  / 'daily.'
+       'Practice' / 'like it counts.'
+       'Master'   / 'the JEE.'                                            */
+  lines: ['Master', 'the JEE.'],
+
+  /** Shapes that hold a letter's place while the headline builds, then
+   *  hand over to the real glyph. `line` and `index` are both 0-based;
+   *  index counts every character in that line, spaces included. */
+  swaps: [
+    { line: 0, index: 1, shape: 'asterisk' }, // the a in Master
+    { line: 1, index: 0, shape: 'bolt' },     // the t in the
+    { line: 1, index: 7, shape: 'dot' },      // the full stop
+  ],
+
+  /** Sits inside the curly braces under the headline. Two lines is the
+   *  shape it was designed for. */
+  lede: 'HudJee — adaptive JEE practice. 20 questions a day, ranked every morning at 5 AM.',
 
   sub: 'Adaptive practice that learns what you actually know. Your Readiness Score and rank recompute at 5 AM — so you always know exactly where you stand.',
 
@@ -50,6 +64,54 @@ export const hero = {
     { text: 'sin\u00B2\u03B8 + cos\u00B2\u03B8 = 1', at: 0.06, left: '8%',  top: '73%', size: 27, rotate: 4  },
     { text: 'PV = nRT',                            at: 0.20, left: '74%', top: '76%', size: 32, rotate: -5 },
     { text: 'E = hf',                              at: 0.16, left: '46%', top: '9%',  size: 26, rotate: 3  },
+  ],
+};
+
+/** The one-paragraph "what this actually is" block under the hero.
+ *  Words brighten from grey to cream as the block scrolls through. */
+export const explainer = {
+  label: 'Why HudJee',
+  body: 'HudJee turns two years of prep into one honest session a day. Adaptive questions pitched at the level you are actually at, and a Readiness Score that recomputes every morning at 5 AM.',
+};
+
+/**
+ * The pinned sideways ribbon. One sentence runs left→right across the
+ * screen while the section is pinned, revealing character by character.
+ *
+ *   line   in reading order. A plain `{ text }` renders as words; a
+ *          `{ chip }` gets a filled colour box. `row` nudges the chip off
+ *          the baseline (in em, negative = up) and `rot` tilts it.
+ *   decor  shapes floating over the same track. `at` is how far along the
+ *          ribbon they sit (0–1), `top` how high in the viewport. `speed`
+ *          below 1 makes a shape drift slower than the text — that lag is
+ *          the whole parallax effect, so keep them varied.
+ */
+export const ribbon: {
+  line: { text?: string; chip?: string; color?: string; rot?: number; row?: number }[];
+  decor: { shape: string; at: number; top: string; size: number; speed: number; rot: number; spin: number }[];
+} = {
+  line: [
+    { text: 'One chapter.' },
+    { chip: 'Adaptive',  color: 'green',  rot: -3, row: -0.58 },
+    { text: 'picks the questions.' },
+    { chip: '20 a day',  color: 'pink',   rot: 2,  row: 0.52 },
+    { text: 'Every answer' },
+    { chip: 'timed',     color: 'orange', rot: -2, row: -0.5 },
+    { text: 'and every gap logged. At' },
+    { chip: '5:00 AM',   color: 'cream',  rot: 3,  row: 0.55 },
+    { text: 'the scoreboard says how far you moved' },
+    { chip: 'overnight', color: 'purple', rot: -2, row: -0.52 },
+  ],
+  decor: [
+    { shape: 'ease',     at: 0.05, top: '17%', size: 200, speed: 0.55, rot: -4,  spin: 10 },
+    { shape: 'asterisk', at: 0.17, top: '68%', size: 96,  speed: 0.78, rot: 0,   spin: 34 },
+    { shape: 'crescent', at: 0.28, top: '20%', size: 124, speed: 0.44, rot: 8,   spin: -22 },
+    { shape: 'blob',     at: 0.40, top: '64%', size: 152, speed: 0.70, rot: -6,  spin: 12 },
+    { shape: 'arc',      at: 0.52, top: '15%', size: 186, speed: 0.50, rot: 3,   spin: -8 },
+    { shape: 'diamond',  at: 0.63, top: '71%', size: 78,  speed: 0.82, rot: 0,   spin: 40 },
+    { shape: 'pin',      at: 0.74, top: '19%', size: 108, speed: 0.60, rot: -10, spin: 16 },
+    { shape: 'asterisk', at: 0.86, top: '66%', size: 84,  speed: 0.74, rot: 0,   spin: -30 },
+    { shape: 'crescent', at: 0.95, top: '22%', size: 104, speed: 0.48, rot: -14, spin: 20 },
   ],
 };
 

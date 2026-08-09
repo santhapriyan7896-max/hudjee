@@ -14,132 +14,61 @@
  * ────────────────────────────────────────────────────────────────
  */
 
-const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { SplitText } from 'gsap/SplitText';
 
-type Mode = 'through' | 'from-top' | 'enter';
-interface Track { el: HTMLElement; fn: (p: number) => void; mode: Mode; top: number; h: number; }
+gsap.registerPlugin(ScrollTrigger, SplitText);
+
+/* Cold grey → cream in 48 steps, shared by the ribbon and the explainer.
+   Assembling an rgb() string per element per frame is the one thing in
+   those loops that would actually cost us something. */
+const INK_RAMP: string[] = [];
+for (let k = 0; k <= 48; k++) {
+  const e = k / 48;
+  INK_RAMP.push(
+    `rgb(${Math.round(74 + 170 * e)},${Math.round(73 + 166 * e)},${Math.round(82 + 144 * e)})`,
+  );
+}
+const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const smooth = (p: number) => p * p * (3 - 2 * p);
 
 export function initScroll() {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* ── Always-on, motion-independent behaviour ─────────────────── */
   initReveals();
-  initSplitText();
   initCounters();
   initFaq();
 
   if (reduce) return;
 
-  /* ── Motion ──────────────────────────────────────────────────── */
-  const tracks: Track[] = [];
-  const track = (el: HTMLElement | null, fn: (p: number) => void, mode: Mode = 'through') => {
-    if (el) tracks.push({ el, fn, mode, top: 0, h: 0 });
-  };
-
-  let vh = window.innerHeight;
-  let vw = window.innerWidth;
-  let sy = window.scrollY;
-  let smooth = sy;
-  let docH = 1;
-
   const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel);
   const $$ = <T extends HTMLElement>(sel: string) => Array.from(document.querySelectorAll<T>(sel));
 
-  const heroInner = $('#hero-inner');
-  const hero = $('#hero');
-  const device = $('#device');
-  const stage = $('#stage');
-  const clockSec = $('#clock');
-  const clockTime = $('#clock-time');
-  const streakSec = $('#streak');
-  const streakGrid = $('#streak-grid');
-  const featSec = $('#feat');
-  const ftrack = $('#ftrack');
-  const fbar = $('#fbar');
-  const prog = $('#prog');
-  const glow = $('#glow');
   const nav = $('header.nav');
-  const factors = $('#factors');
-  const ring = document.querySelector<SVGCircleElement>('#ring');
-  const scoreNum = $('#score-num');
 
-  const caps = $$('.cap');
-  const views = $$('.scr-view');
-  const huds = $$('.hud');
-  const steps = $$('.step');
+  // --- HERO ---
+  initHero();
 
-  /* — HERO: rise + fade, and the formulas write themselves in.
-       Each formula is revealed by widening its clipPath rect, which
-       reads as left-to-right handwriting. No blur — it was the most
-       expensive paint on the page. — */
-  if (hero && heroInner) {
-    const formulas = $$<HTMLElement>('.formula').map((el) => ({
-      el,
-      at: parseFloat(el.dataset.at || '0'),
-      rect: el.querySelector('clipPath rect') as SVGRectElement | null,
-      // viewBox is 620 wide; overshoot so the last glyph fully clears.
-      w: 640,
-    }));
-
-    track(hero, (p) => {
-      const e = clamp(p, 0, 1);
-      heroInner.style.transform = `translateY(${-e * 90}px)`;
-      heroInner.style.opacity = String(clamp(1 - e * 1.6, 0, 1));
-
-      for (const f of formulas) {
-        // Each starts at its own scroll offset and takes 45% to write.
-        const local = clamp((e - f.at) / 0.45, 0, 1);
-        if (f.rect) f.rect.setAttribute('width', String(local * f.w));
-        // Fade out again as the hero leaves, so they never collide
-        // with the section below.
-        f.el.style.opacity = String(clamp(1 - Math.max(0, e - 0.55) * 3, 0, 1) * 0.75);
-      }
-    }, 'from-top');
-  }
-
-  /* — STAGE: device zooms from far to full through four chapters — */
-  if (stage && device) {
-    track(stage, (p) => {
-      const e = clamp(p, 0, 1);
-      // Never let the device exceed ~66% of the viewport, so the
-      // caption above it always stays clear on short screens.
-      const full = clamp((vh * 0.66) / (device.offsetHeight || 600), 0.5, 1.06);
-      const z = e < 0.45
-        ? lerp(full * 0.32, full, ease(e / 0.45))
-        : lerp(full, full * 1.06, (e - 0.45) / 0.55);
-      const rotY = lerp(22, 0, clamp(e / 0.5, 0, 1));
-      const rotX = lerp(10, 0, clamp(e / 0.5, 0, 1));
-      const yOff = lerp(90, 52, e);
-      device.style.transform =
-        `perspective(1500px) translate3d(0,${yOff}px,0) rotateY(${rotY}deg) rotateX(${rotX}deg) scale(${z})`;
-
-      const seg = clamp(Math.floor(e / 0.245), 0, 3);
-      caps.forEach((c, i) => c.classList.toggle('on', i === seg));
-      views.forEach((v, i) => v.classList.toggle('on', i === seg));
-
-      // HUD chips fly in from alternating sides as the device lands.
-      const hp = clamp((e - 0.3) / 0.28, 0, 1);
-      huds.forEach((h, i) => {
-        const dir = i % 2 === 0 ? -1 : 1;
-        h.style.opacity = String(hp * (seg >= 1 ? 1 : hp));
-        h.style.transform =
-          `translate3d(${dir * (1 - hp) * 140}px,${(1 - hp) * 30}px,0) scale(${lerp(0.8, 1, hp)})`;
-      });
-
-      // Gauge + counter scrub with scroll — reverse and the score counts down.
-      // Readiness Score ring: r=39 → circumference ≈ 245. Target 78/100.
-      const gp = clamp((e - 0.76) / 0.2, 0, 1);
-      if (ring) ring.style.strokeDashoffset = String(245 * (1 - 0.78 * gp));
-      if (scoreNum) scoreNum.textContent = String(Math.round(78 * gp));
+  // --- NAV STUCK ---
+  if (nav) {
+    ScrollTrigger.create({
+      start: "top -60",
+      onEnter: () => nav.classList.add('stuck'),
+      onLeaveBack: () => nav.classList.remove('stuck'),
     });
   }
 
-  /* — CLOCK: scroll scrubs 4:44 → 5:00.
-       0.00–0.30  phase 0, the dial fills
-       0.30–0.62  phase 1, the seven factors compute
-       0.62–1.00  phase 2, the score snaps in — */
+  // --- EXPLAINER ---
+  initExplainer();
+
+  // --- RIBBON (sideways sentence) ---
+  initRibbon();
+
+  // --- CLOCK ---
+  const clockSec = $('#clock');
+  const clockTime = $('#clock-time');
   if (clockSec && clockTime) {
     const phases = $$('.phase');
     const efs = $$('.ef');
@@ -150,39 +79,45 @@ export function initScroll() {
     const clockScore = $('#clock-score');
     let lastStamp = '';
 
-    // 4:44 → 5:00 is 16 minutes.
     const START = 4 * 60 + 44;
     const END = 5 * 60;
 
-    track(clockSec, (p) => {
-      const e = clamp(p, 0, 1);
+    ScrollTrigger.create({
+      trigger: clockSec,
+      start: "top top",
+      end: "+=150%", // Keep pinned for 150% VH
+      pin: true,
+      scrub: 1,
+      onUpdate: (self) => {
+        const e = self.progress;
 
-      const mins = Math.round(lerp(START, END, ease(e)));
-      const stamp = `${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, '0')}`;
-      if (stamp !== lastStamp) { clockTime.textContent = stamp; lastStamp = stamp; }
-      if (dial) dial.style.strokeDashoffset = String(704 * (1 - e));
+        const t = e < 0.5 ? 4 * e * e * e : 1 - Math.pow(-2 * e + 2, 3) / 2;
+        const mins = Math.round(START + (END - START) * t);
+        const stamp = `${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, '0')}`;
+        if (stamp !== lastStamp) { clockTime.textContent = stamp; lastStamp = stamp; }
+        if (dial) dial.style.strokeDashoffset = String(704 * (1 - e));
 
-      const phase = e < 0.3 ? 0 : e < 0.62 ? 1 : 2;
-      phases.forEach((el, i) => el.classList.toggle('on', i === phase));
-      engine?.classList.toggle('on', phase === 1);
-      result?.classList.toggle('on', phase === 2);
+        const phase = e < 0.3 ? 0 : e < 0.62 ? 1 : 2;
+        phases.forEach((el, i) => el.classList.toggle('on', i === phase));
+        engine?.classList.toggle('on', phase === 1);
+        result?.classList.toggle('on', phase === 2);
 
-      // Factors fill in sequence across phase 1.
-      const ep = clamp((e - 0.3) / 0.32, 0, 1);
-      efBars.forEach((bar, i) => {
-        if (!bar) return;
-        const d = clamp((ep - i * 0.09) * 3.2, 0, 1);
-        bar.style.width = `${parseFloat(efs[i].dataset.fill || '0') * d}%`;
-      });
+        const ep = Math.max(0, Math.min(1, (e - 0.3) / 0.32));
+        efBars.forEach((bar, i) => {
+          if (!bar) return;
+          const d = Math.max(0, Math.min(1, (ep - i * 0.09) * 3.2));
+          bar.style.width = `${parseFloat(efs[i].dataset.fill || '0') * d}%`;
+        });
 
-      // Score counts up through phase 2.
-      const sp = clamp((e - 0.62) / 0.24, 0, 1);
-      if (clockScore) clockScore.textContent = String(Math.round(78 * sp));
+        const sp = Math.max(0, Math.min(1, (e - 0.62) / 0.24));
+        if (clockScore) clockScore.textContent = String(Math.round(78 * sp));
+      }
     });
   }
 
-  /* — STREAK: scrolling advances a calendar. One missed day burns the
-       run and resets the counter, which is the entire point. — */
+  // --- STREAK ---
+  const streakSec = $('#streak');
+  const streakGrid = $('#streak-grid');
   if (streakSec && streakGrid) {
     const squares = Array.from(streakGrid.querySelectorAll<HTMLElement>('.d'));
     const total = squares.length;
@@ -192,167 +127,373 @@ export function initScroll() {
     const noteEl = $('#streak-note');
     let lastFilled = -1;
 
-    track(streakSec, (p) => {
-      // Hold at the start and end so the copy is readable either side.
-      const e = clamp((clamp(p, 0, 1) - 0.14) / 0.72, 0, 1);
-      const filled = Math.round(e * total);
-      if (filled === lastFilled) return;
+    ScrollTrigger.create({
+      trigger: streakSec,
+      start: "top 70%",
+      end: "bottom 40%",
+      scrub: 1,
+      onUpdate: (self) => {
+        const p = self.progress;
+        const e = Math.max(0, Math.min(1, (p - 0.14) / 0.72));
+        const filled = Math.round(e * total);
+        if (filled === lastFilled) return;
 
-      // Only touch the squares that actually changed.
-      const lo = Math.min(filled, lastFilled < 0 ? 0 : lastFilled);
-      const hi = Math.max(filled, lastFilled);
-      for (let i = Math.max(0, lo - 1); i <= Math.min(total - 1, hi); i++) {
-        const on = i < filled;
-        const isMiss = i === missIdx;
-        squares[i].classList.toggle('on', on && !isMiss);
-        squares[i].classList.toggle('burn', on && isMiss);
-      }
-      lastFilled = filled;
+        const lo = Math.min(filled, lastFilled < 0 ? 0 : lastFilled);
+        const hi = Math.max(filled, lastFilled);
+        for (let i = Math.max(0, lo - 1); i <= Math.min(total - 1, hi); i++) {
+          const on = i < filled;
+          const isMiss = i === missIdx;
+          squares[i].classList.toggle('on', on && !isMiss);
+          squares[i].classList.toggle('burn', on && isMiss);
+        }
+        lastFilled = filled;
 
-      // Streak restarts after the missed day.
-      const run = filled > missIdx ? filled - missIdx - 1 : filled;
-      if (countEl) countEl.textContent = String(run);
-      if (scoreEl) scoreEl.textContent = String(Math.round((run / (total - missIdx - 1)) * 78));
-      noteEl?.classList.toggle('on', filled > missIdx && filled < missIdx + 6);
-      if (noteEl && filled > missIdx && filled < missIdx + 6) {
-        noteEl.textContent = noteEl.dataset.label || '';
+        const run = filled > missIdx ? filled - missIdx - 1 : filled;
+        if (countEl) countEl.textContent = String(run);
+        if (scoreEl) scoreEl.textContent = String(Math.round((run / (total - missIdx - 1)) * 78));
+        noteEl?.classList.toggle('on', filled > missIdx && filled < missIdx + 6);
+        if (noteEl && filled > missIdx && filled < missIdx + 6) {
+          noteEl.textContent = noteEl.dataset.label || '';
+        }
       }
     });
   }
 
-  /* — FEATURES: vertical scroll drives a horizontal track — */
+  // --- FEATURES HORIZONTAL SCROLL ---
+  const featSec = $('#feat');
+  const ftrack = $('#ftrack');
+  const fbar = $('#fbar');
   if (featSec && ftrack && fbar) {
-    track(featSec, (p) => {
-      const e = clamp(p, 0, 1);
-      const maxX = Math.max(0, ftrack.scrollWidth - vw + 40);
-      ftrack.style.transform = `translate3d(${-e * maxX}px,0,0)`;
-      fbar.style.width = `${e * 100}%`;
+    ScrollTrigger.create({
+      trigger: featSec,
+      start: "top top",
+      end: () => `+=${ftrack.scrollWidth - window.innerWidth + 40}`,
+      pin: true,
+      scrub: 1,
+      onUpdate: (self) => {
+        const e = self.progress;
+        const maxX = Math.max(0, ftrack.scrollWidth - window.innerWidth + 40);
+        ftrack.style.transform = `translate3d(${-e * maxX}px, 0, 0)`;
+        fbar.style.width = `${e * 100}%`;
+      }
     });
   }
 
-  /* — SCORE: factor bars fill on scroll — */
+  // --- SCORE FACTORS ---
+  const factors = $('#factors');
   if (factors) {
     const bars = Array.from(factors.querySelectorAll<HTMLElement>('i[data-w]'));
-    track(factors, (p) => {
-      const e = clamp(p * 1.6, 0, 1);
-      bars.forEach((bar, i) => {
-        const d = clamp((e - i * 0.05) * 1.5, 0, 1);
-        bar.style.width = `${parseFloat(bar.dataset.w || '0') * d}%`;
-      });
-    }, 'enter');
-  }
-
-  const progressFor = (t: Track) => {
-    if (t.mode === 'from-top') return (smooth - t.top) / vh;
-    if (t.mode === 'enter') return (smooth + vh - t.top) / (t.h + vh * 0.6);
-    return (smooth - t.top) / Math.max(1, t.h - vh);
-  };
-
-  /* — Cursor glow — */
-  let gx = vw / 2, gy = vh / 2, tx = gx, ty = gy;
-  if (window.matchMedia('(pointer:fine)').matches) {
-    window.addEventListener('mousemove', (e) => { tx = e.clientX; ty = e.clientY; }, { passive: true });
-  } else if (glow) {
-    glow.style.opacity = '.6';
-  }
-
-  const measure = () => {
-    const s = window.scrollY;
-    for (const t of tracks) {
-      const r = t.el.getBoundingClientRect();
-      t.top = r.top + s;
-      t.h = r.height;
-    }
-  };
-  const onResize = () => {
-    vh = window.innerHeight;
-    vw = window.innerWidth;
-    measure();
-    docH = Math.max(1, document.documentElement.scrollHeight - vh);
-  };
-
-  const frame = () => {
-    sy = window.scrollY;
-    smooth = lerp(smooth, sy, 0.16);
-    if (Math.abs(smooth - sy) < 0.3) smooth = sy;
-
-    if (prog) prog.style.transform = `scaleX(${clamp(sy / docH, 0, 1)})`;
-    if (nav) nav.classList.toggle('stuck', sy > 60);
-
-    gx = lerp(gx, tx, 0.09);
-    gy = lerp(gy, ty, 0.09);
-    if (glow) glow.style.transform = `translate3d(${gx}px,${gy}px,0)`;
-
-    for (const t of tracks) {
-      // Skip anything comfortably off-screen.
-      if (smooth + vh * 1.4 < t.top || smooth - vh * 0.6 > t.top + t.h) continue;
-      t.fn(progressFor(t));
-    }
-
-    steps.forEach((s, i) => {
-      const r = s.getBoundingClientRect();
-      if (r.top < vh && r.bottom > 0) {
-        const q = (vh - r.top) / (vh + r.height);
-        s.style.transform = `translateY(${(0.5 - q) * 26 * (1 + i * 0.25)}px)`;
+    ScrollTrigger.create({
+      trigger: factors,
+      start: "top 80%",
+      end: "bottom center",
+      scrub: 1,
+      onUpdate: (self) => {
+        const e = self.progress * 1.6;
+        bars.forEach((bar, i) => {
+          const d = Math.max(0, Math.min(1, (e - i * 0.05) * 1.5));
+          bar.style.width = `${parseFloat(bar.dataset.w || '0') * d}%`;
+        });
       }
     });
+  }
 
-    requestAnimationFrame(frame);
-  };
-
-  window.addEventListener('resize', onResize, { passive: true });
-  window.addEventListener('load', onResize);
-  onResize();
-  requestAnimationFrame(frame);
+  // --- STEPS PARALLAX ---
+  const steps = $$('.step');
+  steps.forEach((s, i) => {
+    gsap.fromTo(s, {
+      y: 13 * (1 + i * 0.25)
+    }, {
+      y: -13 * (1 + i * 0.25),
+      ease: "none",
+      scrollTrigger: {
+        trigger: s,
+        start: "top bottom",
+        end: "bottom top",
+        scrub: true
+      }
+    });
+  });
 }
 
-/* ── Reveal on scroll ─────────────────────────────────────────── */
-function initReveals() {
-  const io = new IntersectionObserver((entries) => {
-    for (const e of entries) {
-      if (e.isIntersecting) {
-        e.target.classList.add('in');
-        io.unobserve(e.target);
-      }
-    }
-  }, { threshold: 0.18, rootMargin: '0px 0px -8% 0px' });
+/* ── Hero — the headline assembles itself ────────────────────────────────
+ *
+ *  Letters arrive out of order from scattered positions and overshoot into
+ *  place. A few slots are held by a shape while that happens — the shape
+ *  spins out at the end and hands the slot to the real glyph.
+ *
+ *  Characters are authored as spans in Hero.astro rather than split here,
+ *  so the swap indices in data/site.ts line up with what you can read in
+ *  the copy.
+ * ─────────────────────────────────────────────────────────────────────── */
+function initHero() {
+  const hero = document.querySelector<HTMLElement>('#hero');
+  if (!hero) return;
 
-  document.querySelectorAll('.rv, .split').forEach((el) => {
+  const q = <T extends HTMLElement>(sel: string) => Array.from(hero.querySelectorAll<T>(sel));
+  const chars = q('.ch');
+  const stands = q('.stand');
+  const held = q('.g.held');
+  const rand = gsap.utils.random;
+
+  /* CSS keeps these hidden so nothing flashes before the script runs.
+     Clearing that here, before the timeline is built, lets every from()
+     below capture the right end state and render its own start state
+     immediately — no gap where a half-built headline is visible. */
+  gsap.set(['.h-title', '.deco', '.hero-badge', '.h-foot'], { opacity: 1 });
+
+  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+  tl
+    /* Letters fly in from anywhere, in no particular order. The wide y
+       range is what produces those mid-flight frames where the headline
+       looks scattered across the screen. */
+    .from(chars, {
+      opacity: 0,
+      y: () => rand(-300, 300),
+      x: () => rand(-90, 90),
+      rotation: () => rand(-28, 28),
+      scale: () => rand(0.55, 1.35),
+      duration: 1.15,
+      ease: 'back.out(1.35)',
+      stagger: { each: 0.045, from: 'random' },
+    }, 0.15)
+
+    /* Stand-ins drop into their slots early and hold. */
+    .from(stands, {
+      opacity: 0,
+      scale: 0,
+      rotation: -200,
+      duration: 0.85,
+      ease: 'back.out(2)',
+      stagger: 0.12,
+    }, 0.25)
+
+    .from('.deco-pinwheel', {
+      opacity: 0, scale: 0, rotation: -230, duration: 1.3, ease: 'back.out(1.5)',
+    }, 0.1)
+    .from('.deco-squiggle', {
+      opacity: 0, scale: 0, y: 90, rotation: 70, duration: 1.1, ease: 'back.out(1.6)',
+    }, 0.55)
+
+    /* The handover: shape spins out, real glyph pops in behind it. */
+    .to(stands, {
+      scale: 0, rotation: 150, opacity: 0,
+      duration: 0.5, ease: 'back.in(1.9)', stagger: 0.1,
+    }, 1.5)
+    /* fromTo, not from — the stylesheet holds these glyphs at opacity 0
+       while their stand-in has the slot, so there is no end state to
+       read back off the element. */
+    .fromTo(held,
+      { opacity: 0, scale: 0.4 },
+      { opacity: 1, scale: 1, duration: 0.6, ease: 'back.out(2.4)', stagger: 0.1 },
+      1.62)
+
+    .from(['.hero-badge', '.h-foot'], {
+      opacity: 0, y: 26, duration: 0.8, stagger: 0.12,
+    }, 1.55);
+
+  /* Idle drift, started once the build has landed. */
+  tl.call(() => {
+    gsap.to('.deco-pinwheel', { rotation: 360, duration: 26, repeat: -1, ease: 'none' });
+    gsap.to('.deco-squiggle', { y: -16, rotation: -7, duration: 5, repeat: -1, yoyo: true, ease: 'sine.inOut' });
+  });
+}
+
+/* ── Explainer — the paragraph brightens word by word on the way past ──
+ *
+ *  A wave of colour runs through the sentence as the block crosses the
+ *  viewport. Same grey-to-cream ramp as the ribbon, so the two blocks
+ *  read as the same idea at two different scales.
+ * ─────────────────────────────────────────────────────────────────────── */
+function initExplainer() {
+  const body = document.querySelector<HTMLElement>('#why-body');
+  if (!body) return;
+
+  const words = Array.from(body.querySelectorAll<HTMLElement>('.ww'));
+  if (!words.length) return;
+
+  const last = new Float32Array(words.length).fill(-1);
+  /* Each word finishes a little after the one before it, and the tail is
+     shorter than the run so the last word is lit before the block leaves. */
+  const lead = 0.62 / words.length;
+
+  ScrollTrigger.create({
+    trigger: body,
+    start: 'top 82%',
+    end: 'bottom 52%',
+    scrub: 0.4,
+    onUpdate: (self) => {
+      for (let i = 0; i < words.length; i++) {
+        const p = clamp01((self.progress - i * lead) * 4.2);
+        if (Math.abs(p - last[i]) < 0.004) continue;
+        last[i] = p;
+        words[i].style.color = INK_RAMP[(smooth(p) * 48) | 0];
+      }
+    },
+  });
+}
+
+/* ── Ribbon — a sentence that runs sideways while the section is pinned ──
+ *
+ *  Three rates of movement stacked on one track, which is what sells the
+ *  depth:
+ *    · shapes  drift at their own `speed`, slower than the words
+ *    · line    tracks scroll 1:1
+ *    · chars   brighten and rise as they cross the middle of the screen
+ *
+ *  Every position is measured once per refresh and cached, so the frame
+ *  loop only reads numbers and writes styles — it never reads layout.
+ * ─────────────────────────────────────────────────────────────────────── */
+function initRibbon() {
+  const sec = document.querySelector<HTMLElement>('#ribbon');
+  const track = document.querySelector<HTMLElement>('#rib-track');
+  const line = document.querySelector<HTMLElement>('#rib-line');
+  if (!sec || !track || !line) return;
+
+  const chars = new SplitText(line.querySelectorAll('.w'), {
+    type: 'chars',
+    tag: 'span',
+  }).chars as HTMLElement[];
+  const chips = Array.from(line.querySelectorAll<HTMLElement>('.chip'));
+  const decos = Array.from(track.querySelectorAll<HTMLElement>('.deco'));
+  if (!chars.length) return;
+
+  const setX = gsap.quickSetter(track, 'x', 'px') as (v: number) => void;
+
+  let charX: number[] = [];
+  let chipX: number[] = [];
+  let maxX = 1;
+  let head = 0; // viewport x at which a character is fully revealed
+  let band = 1; // how far it travels while revealing
+  const lastP = new Float32Array(chars.length).fill(-1);
+
+  const centre = (el: HTMLElement, from: number) => {
+    const r = el.getBoundingClientRect();
+    return r.left - from + r.width / 2;
+  };
+
+  function measure() {
+    setX(0);
+    const vw = window.innerWidth;
+    maxX = Math.max(1, track!.offsetWidth - vw);
+    head = vw * 0.3;
+    band = vw * 0.55;
+    const left = track!.getBoundingClientRect().left;
+    charX = chars.map((c) => centre(c, left));
+    chipX = chips.map((c) => centre(c, left));
+    lastP.fill(-1);
+  }
+
+  function paint(x: number) {
+    for (let i = 0; i < chars.length; i++) {
+      const p = clamp01((head + band - (x + charX[i])) / band);
+      if (Math.abs(p - lastP[i]) < 0.004) continue; // skip the untouched
+      lastP[i] = p;
+      const e = smooth(p);
+      const c = chars[i];
+      c.style.transform = `translate3d(0,${(1 - e) * 0.26}em,0) scale(${0.74 + 0.26 * e})`;
+      c.style.color = INK_RAMP[(e * 48) | 0];
+    }
+
+    for (let i = 0; i < chips.length; i++) {
+      const chip = chips[i];
+      const e = smooth(clamp01((head + band - (x + chipX[i])) / band));
+      const row = parseFloat(chip.dataset.row || '0');
+      const rot = parseFloat(chip.dataset.rot || '0');
+      chip.style.opacity = String(0.12 + 0.88 * e);
+      chip.style.transform =
+        `translate3d(0,${row * e + (1 - e) * 0.55}em,0) rotate(${rot * e}deg) scale(${0.8 + 0.2 * e})`;
+    }
+
+    for (const d of decos) {
+      const speed = parseFloat(d.dataset.speed || '1');
+      const spin = parseFloat(d.dataset.spin || '0');
+      /* The track has already carried this shape by x. Give back the
+         difference so it nets out at speed × x — under 1 reads as
+         "further away", which is the whole parallax. */
+      d.style.transform = `translate3d(${(speed - 1) * x}px,0,0) rotate(${x * spin * -0.004}deg)`;
+    }
+  }
+
+  /* Idle float lives on the inner span so it never fights the parallax
+     transform being written to .deco every frame. */
+  decos.forEach((d, i) => {
+    const inner = d.firstElementChild as HTMLElement | null;
+    if (!inner) return;
+    gsap.to(inner, {
+      y: i % 2 ? 15 : -17,
+      duration: 4 + (i % 4) * 0.6,
+      repeat: -1,
+      yoyo: true,
+      ease: 'sine.inOut',
+    });
+  });
+
+  const apply = (self: { progress: number }) => {
+    const x = -self.progress * maxX;
+    setX(x);
+    paint(x);
+  };
+
+  ScrollTrigger.create({
+    trigger: sec,
+    start: 'top top',
+    end: () => `+=${Math.max(1, track.offsetWidth - window.innerWidth)}`,
+    pin: true,
+    scrub: 0.6,
+    invalidateOnRefresh: true,
+    onRefresh: (self) => { measure(); apply(self); },
+    onUpdate: apply,
+  });
+
+  /* Web fonts land after first paint and change every width we cached. */
+  document.fonts?.ready.then(() => ScrollTrigger.refresh());
+}
+
+/* ── Reveal on scroll (GSAP) ─────────────────────────────────────────── */
+function initReveals() {
+  document.querySelectorAll('.rv, [data-split], .split').forEach((el) => {
     if (el.closest('#hero')) return; // hero reveals fire after the preloader
-    io.observe(el);
+
+    if (el.hasAttribute('data-split') || el.classList.contains('split')) {
+      const split = new SplitText(el, { type: "words, chars" });
+      gsap.fromTo(split.chars, {
+        opacity: 0,
+        y: 50,
+        rotateX: -90,
+      }, {
+        opacity: 1,
+        y: 0,
+        rotateX: 0,
+        duration: 0.8,
+        stagger: 0.02,
+        ease: "back.out(1.5)",
+        scrollTrigger: {
+          trigger: el,
+          start: "top 85%",
+        }
+      });
+    } else {
+      gsap.fromTo(el, {
+        opacity: 0,
+        y: 30,
+      }, {
+        opacity: 1,
+        y: 0,
+        duration: 0.6,
+        ease: "power3.out",
+        scrollTrigger: {
+          trigger: el,
+          start: "top 85%",
+        }
+      });
+    }
   });
 }
 
 /* ── Split headings into per-word animated spans ──────────────── */
-function initSplitText() {
-  document.querySelectorAll<HTMLElement>('[data-split]').forEach((el) => {
-    el.classList.add('split');
-    const walk = (node: Node) => {
-      Array.from(node.childNodes).forEach((n) => {
-        if (n.nodeType === Node.TEXT_NODE) {
-          const frag = document.createDocumentFragment();
-          (n.textContent || '').split(/(\s+)/).forEach((tok) => {
-            if (!tok.trim()) { frag.appendChild(document.createTextNode(tok)); return; }
-            const w = document.createElement('span');
-            w.className = 'w';
-            const i = document.createElement('i');
-            i.textContent = tok;
-            w.appendChild(i);
-            frag.appendChild(w);
-          });
-          node.replaceChild(frag, n);
-        } else if (n.nodeType === Node.ELEMENT_NODE && !(n as HTMLElement).classList.contains('w')) {
-          walk(n);
-        }
-      });
-    };
-    walk(el);
-    let d = 0;
-    el.querySelectorAll<HTMLElement>('.w > i').forEach((i) => {
-      i.style.transitionDelay = `${(d += 0.035).toFixed(3)}s`;
-    });
-  });
-}
+// Replaced by native GSAP SplitText in initReveals()
 
 /* ── Number counters ──────────────────────────────────────────── */
 function initCounters() {
