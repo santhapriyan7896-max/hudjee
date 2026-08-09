@@ -2,23 +2,49 @@
 import { footer } from '../data/site';
 const year = new Date().getFullYear();
 ---
-<footer>
-  <div class="wrap foot">
+<footer id="footer">
+  <div class="wrap foot-grid">
+    {footer.columns.map((col) => (
+      <div class="foot-col">
+        <h4 style={`color: ${col.color}`}>{col.title}</h4>
+        <div class="links">
+          {col.links.map((l) => <a href={l.href}>{l.label}</a>)}
+        </div>
+      </div>
+    ))}
+  </div>
+  
+  <div class="wrap foot-bottom foot-col">
     <img src="/logo.png" alt="HudJee" width="194" height="46" />
-    <div>© {year} {footer.legal}</div>
-    <div class="links">{footer.links.map((l) => <a href={l.href}>{l.label}</a>)}</div>
+    <div class="legal">© {year} {footer.legal}</div>
   </div>
 </footer>
 
 <style>
   footer{
-    border-top:2px solid var(--app-card-border);padding:var(--space-7) 0;
-    color:var(--app-text-3);font-size:13px;font-weight:var(--fw-semibold);
+    border-top:1px solid var(--app-card-border);padding:clamp(60px, 8vw, 120px) 0 40px;
+    color:var(--app-text-3);font-size:14px;font-weight:var(--fw-semibold);
     position:relative;z-index:2;
   }
-  .foot{display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);flex-wrap:wrap;}
-  .foot img{height:18px;width:auto;opacity:.75;}
-  .links{display:flex;gap:var(--space-5);}
-  .links a{color:var(--app-text-2);}
-  .links a:hover{color:var(--app-purple);}
+  .foot-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
+    gap:40px;
+    margin-bottom:80px;
+  }
+  .foot-col h4 {
+    font-size:13px; font-weight:var(--fw-black);
+    margin-bottom:20px; letter-spacing:0.5px;
+  }
+  .links{display:flex;flex-direction:column;gap:12px;}
+  .links a{color:var(--app-text-2);text-decoration:none;transition:color .2s;}
+  .links a:hover{color:var(--app-text-1);}
+  
+  .foot-bottom {
+    display:flex;justify-content:space-between;align-items:center;
+    padding-top:40px;border-top:1px solid var(--app-card-border);
+    flex-wrap:wrap;gap:20px;
+  }
+  .foot-bottom img{height:22px;width:auto;opacity:.8;}
+  .legal{color:var(--app-text-3);}
 </style>

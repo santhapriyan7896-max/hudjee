@@ -1,6 +1,49 @@
 ---
+/**
+ * ────────────────────────────────────────────────────────────────
+ *  Steps — three cards, each a tinted panel with a braced label at
+ *  the top, a big gradient shape in the middle and the copy at the
+ *  bottom.
+ *
+ *  Art is keyed off `icon` in data/site.ts so the copy file did not
+ *  need to change: bars → levels, check → cycle, trophy → climb.
+ * ────────────────────────────────────────────────────────────────
+ */
 import { how } from '../data/site';
-import Icon from './Icon.astro';
+
+/* The scalloped ring is a circle whose radius wobbles — easier to
+   generate than to hand-write as 12 bezier lobes. */
+function scallop(cx: number, cy: number, r: number, amp: number, lobes: number) {
+  const pts: string[] = [];
+  for (let i = 0; i <= 160; i++) {
+    const t = (i / 160) * Math.PI * 2;
+    const rad = r + amp * Math.sin(lobes * t);
+    pts.push(`${(cx + rad * Math.cos(t)).toFixed(1)} ${(cy + rad * Math.sin(t)).toFixed(1)}`);
+  }
+  return `M${pts.join('L')}Z`;
+}
+
+const ART: Record<string, string> = {
+  /* Three rising bars — set the size of the session. */
+  bars: `<g fill="url(#stGrad)">
+    <rect x="22" y="112" width="40" height="66" rx="20"/>
+    <rect x="80" y="72" width="40" height="106" rx="20"/>
+    <rect x="138" y="26" width="40" height="152" rx="20"/>
+  </g>`,
+  /* A ring that comes back round to where it started — one a day. */
+  check: `<path d="${scallop(100, 100, 66, 9, 11)}" fill="none"
+    stroke="url(#stGrad)" stroke-width="17" stroke-linejoin="round"/>`,
+  /* A path stepping up to the right, with the marker sitting on the end. */
+  trophy: `<g fill="none" stroke="url(#stGrad)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M28 154h44l36-56h44l24-44"/>
+    </g>
+    <circle cx="176" cy="54" r="17" fill="#F1EAFF"/>`,
+};
+
+const brace = `<svg viewBox="0 0 18 100" preserveAspectRatio="none" fill="none" aria-hidden="true">
+  <path d="M15 1C8 1 10 9 10 21c0 15-8 22-8 29s8 14 8 29c0 12-2 20 5 20"
+    stroke="currentColor" stroke-width="1.6" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+</svg>`;
 ---
 <section class="pad" id="how">
   <div class="wrap">
@@ -9,36 +52,80 @@ import Icon from './Icon.astro';
       <h2 data-split>{how.headline} <em class="grad">{how.headlineAccent}</em></h2>
       <p class="lede">{how.lede}</p>
     </div>
+
     <div class="steps">
       {how.steps.map((s, i) => (
         <div class="step rv" style={`transition-delay:${i * 0.06}s`}>
-          <div class="num">{s.num}</div>
-          <div class="ico"><Icon name={s.icon} /></div>
-          <h3>{s.title}</h3>
-          <p>{s.body}</p>
+          <span class="s-label">
+            <span class="brace brace-l"><Fragment set:html={brace} /></span>
+            {s.title}
+            <span class="brace brace-r"><Fragment set:html={brace} /></span>
+          </span>
+
+          <div class="s-art">
+            <svg viewBox="0 0 200 200" fill="none" aria-hidden="true">
+              <Fragment set:html={ART[s.icon]} />
+            </svg>
+          </div>
+
+          <p class="s-body">{s.body}</p>
         </div>
       ))}
     </div>
   </div>
+
+  <svg class="s-sprite" aria-hidden="true" focusable="false">
+    <defs>
+      {/* userSpaceOnUse so a shape built from several pieces gets one
+          continuous ramp instead of one per piece. */}
+      <linearGradient id="stGrad" gradientUnits="userSpaceOnUse" x1="24" y1="176" x2="176" y2="24">
+        <stop offset="0%" stop-color="#5B45D6"/>
+        <stop offset="50%" stop-color="#A99BF2"/>
+        <stop offset="100%" stop-color="#F0CBA6"/>
+      </linearGradient>
+    </defs>
+  </svg>
 </section>
 
 <style>
   h2 em{font-style:normal;}
   .sec-head .lede{margin-top:var(--space-4);}
+  .s-sprite{position:absolute;width:0;height:0;}
+
   .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-4);}
+
+  /* Flat tinted panel — no border, no drop shadow. The tint alone is what
+     separates it from the page, the same way the reference cards work. */
   .step{
-    background:var(--app-card);border-radius:var(--app-r-card);
-    border:1px solid var(--border-default);
-    padding:var(--space-6);position:relative;overflow:hidden;
-    transition:border-color .16s,opacity .38s ease,transform .42s cubic-bezier(.2,1.25,.4,1);
+    background:#17151F;border-radius:26px;
+    padding:28px 28px 32px;min-height:430px;
+    display:flex;flex-direction:column;
+    transition:opacity .38s ease,transform .42s cubic-bezier(.2,1.25,.4,1),background .2s;
   }
-  .step:hover{border-color:#33323A;}
-  .step .num{color:var(--app-purple);font-size:13px;font-weight:var(--fw-black);letter-spacing:1.6px;}
-  .step .ico{
-    width:48px;height:48px;border-radius:var(--radius-md);background:var(--app-elevated);
-    display:grid;place-items:center;margin:var(--space-4) 0;
+  .step:hover{background:#1B1926;}
+
+  .s-label{
+    position:relative;display:inline-block;align-self:flex-start;
+    padding:3px 17px;color:var(--app-text);
+    font-size:16px;font-weight:var(--fw-bold);letter-spacing:.1px;
   }
-  .step h3{font-size:20px;margin-bottom:var(--space-2);}
-  .step p{color:var(--app-text-2);font-size:15px;font-weight:var(--fw-semibold);line-height:1.5;}
-  @media (max-width:960px){ .steps{grid-template-columns:1fr;} }
+  .brace{position:absolute;top:0;bottom:0;width:11px;color:var(--app-purple);}
+  .brace :global(svg){width:100%;height:100%;display:block;}
+  .brace-l{left:0;}
+  .brace-r{right:0;transform:scaleX(-1);}
+
+  .s-art{flex:1;display:grid;place-items:center;padding:22px 0 30px;}
+  .s-art svg{width:min(64%,172px);height:auto;display:block;}
+
+  .s-body{
+    margin-top:auto;color:var(--app-text-2);
+    font-size:16px;font-weight:var(--fw-semibold);line-height:1.5;
+  }
+
+  @media (max-width:960px){
+    .steps{grid-template-columns:1fr;}
+    .step{min-height:0;}
+    .s-art{padding:26px 0;}
+    .s-art svg{width:min(46%,150px);}
+  }
 </style>
