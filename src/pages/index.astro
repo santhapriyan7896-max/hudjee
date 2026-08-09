@@ -1,9 +1,9 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import Preloader from '../components/Preloader.astro';
 import Nav from '../components/Nav.astro';
 import Hero from '../components/Hero.astro';
-import DeviceStage from '../components/DeviceStage.astro';
+import Explainer from '../components/Explainer.astro';
+import Ribbon from '../components/Ribbon.astro';
 import FiveAm from '../components/FiveAm.astro';
 import Streak from '../components/Streak.astro';
 import Marquee from '../components/Marquee.astro';
@@ -16,14 +16,11 @@ import Cta from '../components/Cta.astro';
 import Footer from '../components/Footer.astro';
 ---
 <Layout>
-  <Preloader />
-  <div id="prog"></div>
-  <div id="glow"></div>
-
   <Nav />
   <main id="top">
     <Hero />
-    <DeviceStage />
+    <Explainer />
+    <Ribbon />
     <FiveAm />
     <Marquee />
     <Steps />
@@ -40,22 +37,8 @@ import Footer from '../components/Footer.astro';
 <script>
   import { initScroll } from '../scripts/scroll';
 
+  // Initialize scroll engine and hero animations immediately
   initScroll();
-
-  /* Preloader → hero reveal */
-  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const unlock = () => document.body.classList.remove('is-locked');
-
-  window.addEventListener('load', () => {
-    setTimeout(() => {
-      document.getElementById('pre')?.classList.add('done');
-      unlock();
-      document.querySelectorAll('#hero .rv, #hero .split').forEach((el, i) => {
-        setTimeout(() => el.classList.add('in'), 100 + i * 90);
-      });
-    }, reduce ? 80 : 900);
-  });
-  setTimeout(unlock, 2400); // safety net if `load` never fires
 
   /* Smooth anchor scrolling */
   document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]').forEach((a) => {

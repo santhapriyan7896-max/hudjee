@@ -1,0 +1,71 @@
+---
+/**
+ * ────────────────────────────────────────────────────────────────
+ *  Explainer — the plain-language "what this is" paragraph that
+ *  sits between the hero and the ribbon.
+ *
+ *  Words are emitted individually so scroll.ts can brighten them
+ *  from grey to cream as the block passes through the viewport.
+ * ────────────────────────────────────────────────────────────────
+ */
+import { explainer } from '../data/site';
+
+const words = explainer.body.split(' ');
+
+const brace = `<svg viewBox="0 0 18 100" preserveAspectRatio="none" fill="none" aria-hidden="true">
+  <path d="M15 1C8 1 10 9 10 21c0 15-8 22-8 29s8 14 8 29c0 12-2 20 5 20"
+    stroke="currentColor" stroke-width="1.6" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+</svg>`;
+---
+<section id="why">
+  <div class="why-in">
+    <span class="why-label">
+      <span class="brace brace-l"><Fragment set:html={brace} /></span>
+      {explainer.label}
+      <span class="brace brace-r"><Fragment set:html={brace} /></span>
+    </span>
+
+    <p class="why-body" id="why-body">
+      {words.map((w) => <span class="ww">{w}</span>)}
+    </p>
+  </div>
+</section>
+
+<style>
+  #why{
+    --why-ink:#F4EFE2;
+    --why-dim:#46454E;
+    position:relative;z-index:2;padding:0 4vw;
+  }
+  .why-in{
+    max-width:1240px;margin:0 auto;
+    padding:clamp(64px,9vw,132px) 0;
+    border-top:1px solid var(--app-card-border);
+    border-bottom:1px solid var(--app-card-border);
+  }
+
+  /* Small brace-wrapped label, same brackets as the hero lede. */
+  .why-label{
+    position:relative;display:inline-block;padding:6px 22px;
+    color:var(--why-ink);font-size:13px;font-weight:var(--fw-black);
+    letter-spacing:.4px;margin-bottom:clamp(36px,5vw,72px);
+  }
+  .brace{position:absolute;top:0;bottom:0;width:13px;color:var(--why-ink);}
+  .brace :global(svg){width:100%;height:100%;display:block;}
+  .brace-l{left:0;}
+  .brace-r{right:0;transform:scaleX(-1);}
+
+  .why-body{
+    font-family:var(--font-display);font-weight:500;
+    font-size:clamp(26px,4.2vw,68px);line-height:1.16;letter-spacing:-.025em;
+    color:var(--why-dim);
+  }
+  /* inline-block so the brighten can be written per word without the
+     line boxes reflowing. The margin is the word space. */
+  .why-body :global(.ww){display:inline-block;margin-right:.26em;}
+
+  /* Nothing to scroll through — just read it. */
+  @media (prefers-reduced-motion:reduce){
+    .why-body{color:var(--why-ink);}
+  }
+</style>
