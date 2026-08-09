@@ -68,10 +68,30 @@ export const hero = {
 };
 
 /** The one-paragraph "what this actually is" block under the hero.
- *  Words brighten from grey to cream as the block scrolls through. */
+ *
+ *  It reads as an ordinary paragraph, but four phrases take turns
+ *  performing when the block scrolls into view — each one goes green,
+ *  does its trick, and settles back to cream. `demo` picks the trick:
+ *
+ *    draw      a drawn-on flourish with a shape riding the path
+ *    pop       characters light up left to right
+ *    scramble  characters cycle through junk before resolving
+ *    scatter   characters fly in from off their line
+ *
+ *  Order in this array is the order they perform in. Keep `draw` on a
+ *  phrase near the start of a line — the flourish is anchored to the
+ *  phrase's first line box. */
 export const explainer = {
   label: 'Why HudJee',
-  body: 'HudJee turns two years of prep into one honest session a day. Adaptive questions pitched at the level you are actually at, and a Readiness Score that recomputes every morning at 5 AM.',
+  parts: [
+    { text: 'HudJee turns two years of prep into' },
+    { text: 'one honest session a day.', demo: 'draw' },
+    { text: 'Adaptive', demo: 'pop' },
+    { text: 'questions pitched at the level you are actually at, and a' },
+    { text: 'Readiness Score', demo: 'scramble' },
+    { text: 'that recomputes every morning at' },
+    { text: '5 AM.', demo: 'scatter' },
+  ] as { text: string; demo?: string }[],
 };
 
 /**
@@ -100,7 +120,7 @@ export const ribbon: {
     { text: 'and every gap logged. At' },
     { chip: '5:00 AM',   color: 'cream',  rot: 3,  row: 0.55 },
     { text: 'the scoreboard says how far you moved' },
-    { chip: 'overnight', color: 'purple', rot: -2, row: -0.52 },
+    { chip: 'overnight', color: 'cream', rot: -2, row: 0 },
   ],
   decor: [
     { shape: 'ease',     at: 0.05, top: '17%', size: 200, speed: 0.55, rot: -4,  spin: 10 },
@@ -128,7 +148,45 @@ export const dawn = {
   sub: 'Every day, the scoreboard resets. Every day, you answer for it.',
 };
 
-/** The 5 AM clock sequence. Each phase is a slice of scroll. */
+/** The tools list — stacked rows with a big gradient shape on the left and
+ *  a title, one line and a link on the right, hairline ruled between each.
+ *
+ *  `shape` picks the graphic (the set lives in Tools.astro) and `accent`
+ *  picks the title colour, which is matched to that shape's gradient — if
+ *  you change one, change the other. */
+export const tools = {
+  label: 'What you get',
+  rows: [
+    {
+      shape: 'arch', accent: 'pink',
+      title: 'Adaptive',
+      body: 'Questions pitched at the edge of what you already know.',
+      cta: 'Explore adaptive', href: '#feat',
+    },
+    {
+      shape: 'notch', accent: 'orange',
+      title: 'Readiness Score',
+      body: 'One number, recomputed against every active student at 5 AM.',
+      cta: 'Explore the score', href: '#score',
+    },
+    {
+      shape: 'stack', accent: 'purple',
+      title: 'Streaks',
+      body: 'Miss a day and it burns — unless you banked a freeze.',
+      cta: 'Explore streaks', href: '#feat',
+    },
+    {
+      shape: 'grid', accent: 'cyan',
+      title: 'Arena',
+      body: 'Timed test mode, scored against the whole field.',
+      cta: 'Explore arena', href: '#feat',
+    },
+  ],
+};
+
+/** The 5 AM clock sequence. Each phase is a slice of scroll.
+ *  No longer rendered — the clock section was replaced by `tools` above.
+ *  Kept because the copy is good; delete it if you are sure. */
 export const fiveAm = {
   eyebrow: 'Every morning',
   phases: [

@@ -17,8 +17,11 @@
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SplitText } from 'gsap/SplitText';
+import { ScrambleTextPlugin } from 'gsap/ScrambleTextPlugin';
+import { DrawSVGPlugin } from 'gsap/DrawSVGPlugin';
+import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
 
-gsap.registerPlugin(ScrollTrigger, SplitText);
+gsap.registerPlugin(ScrollTrigger, SplitText, ScrambleTextPlugin, DrawSVGPlugin, MotionPathPlugin);
 
 /* Cold grey → cream in 48 steps, shared by the ribbon and the explainer.
    Assembling an rgb() string per element per frame is the one thing in
@@ -51,12 +54,26 @@ export function initScroll() {
   // --- HERO ---
   initHero();
 
-  // --- NAV STUCK ---
+  // --- SMART NAV ---
   if (nav) {
     ScrollTrigger.create({
-      start: "top -60",
-      onEnter: () => nav.classList.add('stuck'),
-      onLeaveBack: () => nav.classList.remove('stuck'),
+      start: "top top",
+      end: 99999, // active throughout the whole page
+      onUpdate: (self) => {
+        // Add 'stuck' class (dark bg and border) when scrolled slightly
+        if (self.scroll() > 10) {
+          nav.classList.add('stuck');
+        } else {
+          nav.classList.remove('stuck');
+        }
+        
+        // Hide nav when scrolling down past 60px, show when scrolling up
+        if (self.direction === 1 && self.scroll() > 60) {
+          nav.classList.add('hide');
+        } else {
+          nav.classList.remove('hide');
+        }
+      }
     });
   }
 
@@ -66,54 +83,8 @@ export function initScroll() {
   // --- RIBBON (sideways sentence) ---
   initRibbon();
 
-  // --- CLOCK ---
-  const clockSec = $('#clock');
-  const clockTime = $('#clock-time');
-  if (clockSec && clockTime) {
-    const phases = $$('.phase');
-    const efs = $$('.ef');
-    const efBars = efs.map((x) => x.querySelector('i') as HTMLElement);
-    const engine = $('#engine');
-    const result = $('#result');
-    const dial = document.querySelector<SVGCircleElement>('#dial-arc');
-    const clockScore = $('#clock-score');
-    let lastStamp = '';
-
-    const START = 4 * 60 + 44;
-    const END = 5 * 60;
-
-    ScrollTrigger.create({
-      trigger: clockSec,
-      start: "top top",
-      end: "+=150%", // Keep pinned for 150% VH
-      pin: true,
-      scrub: 1,
-      onUpdate: (self) => {
-        const e = self.progress;
-
-        const t = e < 0.5 ? 4 * e * e * e : 1 - Math.pow(-2 * e + 2, 3) / 2;
-        const mins = Math.round(START + (END - START) * t);
-        const stamp = `${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, '0')}`;
-        if (stamp !== lastStamp) { clockTime.textContent = stamp; lastStamp = stamp; }
-        if (dial) dial.style.strokeDashoffset = String(704 * (1 - e));
-
-        const phase = e < 0.3 ? 0 : e < 0.62 ? 1 : 2;
-        phases.forEach((el, i) => el.classList.toggle('on', i === phase));
-        engine?.classList.toggle('on', phase === 1);
-        result?.classList.toggle('on', phase === 2);
-
-        const ep = Math.max(0, Math.min(1, (e - 0.3) / 0.32));
-        efBars.forEach((bar, i) => {
-          if (!bar) return;
-          const d = Math.max(0, Math.min(1, (ep - i * 0.09) * 3.2));
-          bar.style.width = `${parseFloat(efs[i].dataset.fill || '0') * d}%`;
-        });
-
-        const sp = Math.max(0, Math.min(1, (e - 0.62) / 0.24));
-        if (clockScore) clockScore.textContent = String(Math.round(78 * sp));
-      }
-    });
-  }
+  // --- TOOLS ---
+  initTools();
 
   // --- STREAK ---
   const streakSec = $('#streak');
@@ -300,37 +271,229 @@ function initHero() {
   });
 }
 
-/* ── Explainer — the paragraph brightens word by word on the way past ──
+/* ── Tools — each row arrives as it reaches the viewport ────────────────
  *
- *  A wave of colour runs through the sentence as the block crosses the
- *  viewport. Same grey-to-cream ramp as the ribbon, so the two blocks
- *  read as the same idea at two different scales.
+ *  The shape swings in from its own side and settles, the copy follows a
+ *  beat behind, and the shape keeps drifting after so the list never sits
+ *  completely dead.
  * ─────────────────────────────────────────────────────────────────────── */
+function initTools() {
+  const rows = Array.from(document.querySelectorAll<HTMLElement>('#tools .t-row'));
+  if (!rows.length) return;
+
+  rows.forEach((row, i) => {
+    const art = row.querySelector<HTMLElement>('.t-art');
+    const copy = row.querySelector<HTMLElement>('.t-copy');
+
+    gsap.timeline({ scrollTrigger: { trigger: row, start: 'top 82%', once: true } })
+      .from(art, {
+        opacity: 0, scale: 0.7, rotation: i % 2 ? 10 : -10, y: 40,
+        duration: 0.9, ease: 'back.out(1.4)',
+      })
+      .from(copy!.children, {
+        opacity: 0, y: 26, duration: 0.6, stagger: 0.09, ease: 'power3.out',
+      }, 0.16);
+
+    /* Each shape drifts on its own clock so they never bob in lockstep. */
+    gsap.to(art, {
+      y: i % 2 ? 12 : -12,
+      duration: 4.5 + i * 0.7,
+      repeat: -1, yoyo: true, ease: 'sine.inOut', delay: 1 + i * 0.3,
+    });
+  });
+}
+
+/* ── Explainer — four phrases take turns performing ──────────────────────
+ *
+ *  When the section reaches the top of the screen the page is held still
+ *  for WHY_LOCK_S seconds while each marked phrase goes green, does one
+ *  trick, and settles back to cream. Then scrolling is handed back.
+ *
+ *  The reel is time-scaled to fit the lock exactly, so the hold and the
+ *  animation can never drift apart — WHY_LOCK_S is the one number that
+ *  controls the pace of the whole thing. Raise it and every phrase slows
+ *  proportionally; lower it and they all sharpen up.
+ *
+ *  Which phrase does what is set in data/site.ts; this plays them in
+ *  document order, one after another.
+ * ─────────────────────────────────────────────────────────────────────── */
+const WHY_GREEN = '#0AE448';
+const WHY_INK = '#F4EFE2';
+const WHY_LOCK_S = 4.5;
+
 function initExplainer() {
+  const sec = document.querySelector<HTMLElement>('#why');
   const body = document.querySelector<HTMLElement>('#why-body');
-  if (!body) return;
+  if (!sec || !body) return;
 
-  const words = Array.from(body.querySelectorAll<HTMLElement>('.ww'));
-  if (!words.length) return;
+  const segs = Array.from(body.querySelectorAll<HTMLElement>('.seg[data-demo]'));
+  if (!segs.length) return;
 
-  const last = new Float32Array(words.length).fill(-1);
-  /* Each word finishes a little after the one before it, and the tail is
-     shorter than the run so the last word is lit before the block leaves. */
-  const lead = 0.62 / words.length;
+  const flourish = document.querySelector<HTMLElement>('#why-flourish');
+  const rand = gsap.utils.random;
+
+  /* ScrambleText rewrites the element's contents, so that phrase must be
+     left whole — everything else gets split for per-character work. */
+  const charsFor = new Map<HTMLElement, HTMLElement[]>();
+  for (const seg of segs) {
+    if (seg.dataset.demo === 'scramble') continue;
+    charsFor.set(
+      seg,
+      SplitText.create(seg, { type: 'chars', tag: 'span', smartWrap: true })
+        .chars as HTMLElement[],
+    );
+  }
+
+  const drawSeg = segs.find((s) => s.dataset.demo === 'draw');
+
+  /* sine.inOut throughout — the colour changes should glide rather than
+     snap. Where a phrase needs a bit of overshoot it says so locally. */
+  const tl = gsap.timeline({ paused: true, defaults: { ease: 'sine.inOut' } });
+
+  /* A beat of stillness at each end, so the paragraph is settled and
+     readable before the first phrase moves and after the last one lands. */
+  tl.to({}, { duration: 0.15 });
+
+  for (const seg of segs) {
+    const chars = charsFor.get(seg) ?? [];
+    const gap = '+=0.18'; // a breath between one phrase and the next
+
+    switch (seg.dataset.demo) {
+      /* A flourish is drawn on over the phrase, with the burst riding
+         the stroke as it goes. */
+      case 'draw': {
+        tl.to(chars, { color: WHY_GREEN, duration: 0.18, stagger: 0.012 }, gap);
+
+        if (flourish) {
+          const at = '<'; // start alongside the colour sweep
+          tl.set(flourish, { opacity: 1 }, at)
+            .fromTo('#why-curl', { drawSVG: '0% 0%' }, { drawSVG: '0% 100%', duration: 0.5, ease: 'power1.inOut' }, at)
+            .fromTo('#why-spark',
+              { scale: 0, opacity: 0, transformOrigin: '50% 50%' },
+              {
+                scale: 1, opacity: 1, duration: 0.5, ease: 'power1.inOut',
+                motionPath: { path: '#why-curl', align: '#why-curl', alignOrigin: [0.5, 0.5] },
+              }, at)
+            .from('.mote', { scale: 0, opacity: 0, duration: 0.24, stagger: 0.04, ease: 'back.out(1.8)' }, '>-0.16')
+            /* Erase from the tail so it reads as being pulled away. */
+            .to('#why-curl', { drawSVG: '100% 100%', duration: 0.3, ease: 'power1.in' }, '+=0.1')
+            .to(['#why-spark', '.mote'], { scale: 0, opacity: 0, duration: 0.2, stagger: 0.03 }, '<')
+            .set(flourish, { opacity: 0 });
+        }
+
+        tl.to(chars, { color: WHY_INK, duration: 0.22, stagger: 0.01 }, '>-0.14');
+        break;
+      }
+
+      /* Characters light up left to right and nudge up as they go. */
+      case 'pop':
+        tl.to(chars, { color: WHY_GREEN, y: -8, duration: 0.18, stagger: 0.028, ease: 'back.out(1.5)' }, gap)
+          .to(chars, { color: WHY_INK, y: 0, duration: 0.22, stagger: 0.018 }, '>-0.1');
+        break;
+
+      /* Junk glyphs cycle through and resolve into the real text. */
+      case 'scramble': {
+        const text = seg.textContent || '';
+        tl.to(seg, { color: WHY_GREEN, duration: 0.14 }, gap)
+          .to(seg, {
+            duration: 0.6,
+            scrambleText: { text, chars: 'upperAndLowerCase', speed: 0.8, revealDelay: 0.16 },
+          }, '<')
+          .to(seg, { color: WHY_INK, duration: 0.25 }, '>-0.1');
+        break;
+      }
+
+      /* Characters burst outward with scale and random rotation, then slam back. */
+      case 'scatter':
+        tl.to(chars, { color: WHY_GREEN, duration: 0.14 }, gap)
+          .to(chars, {
+            scale: 2.5,
+            rotationZ: () => rand(-15, 15),
+            y: -15,
+            duration: 0.25,
+            stagger: { each: 0.04, from: 'center' },
+            ease: 'back.out(2)'
+          }, '<')
+          .to(chars, {
+            scale: 1,
+            rotationZ: 0,
+            y: 0,
+            color: WHY_INK,
+            duration: 0.35,
+            stagger: { each: 0.04, from: 'center' },
+            ease: 'bounce.out'
+          }, '>-0.1');
+        break;
+    }
+  }
+
+  tl.to({}, { duration: 0.15 });
+
+  /* Squeeze (or stretch) the whole reel into the lock window, so the hold
+     and the animation finish together no matter how the choreography above
+     is edited. */
+  tl.timeScale(tl.duration() / WHY_LOCK_S);
 
   ScrollTrigger.create({
-    trigger: body,
-    start: 'top 82%',
-    end: 'bottom 52%',
-    scrub: 0.4,
-    onUpdate: (self) => {
-      for (let i = 0; i < words.length; i++) {
-        const p = clamp01((self.progress - i * lead) * 4.2);
-        if (Math.abs(p - last[i]) < 0.004) continue;
-        last[i] = p;
-        words[i].style.color = INK_RAMP[(smooth(p) * 48) | 0];
-      }
+    trigger: sec,
+    start: 'top top',
+    once: true,
+    onRefresh: () => flourish && placeFlourish(body, flourish, drawSeg),
+    onEnter: () => {
+      /* Snap to the section's top first — someone arriving on a fast flick
+         would otherwise be held at whatever half-framed spot they landed. */
+      const y = sec.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo(0, y);
+      if (flourish) placeFlourish(body, flourish, drawSeg);
+      holdScroll(y, WHY_LOCK_S * 1000);
+      tl.play(0);
     },
+  });
+}
+
+/** Hold the page at `y` for `ms`, then give scrolling back.
+ *
+ *  Wheel, touch and the scrolling keys are swallowed; anything that slips
+ *  through (scrollbar drags, momentum already in flight) is snapped back by
+ *  the scroll listener. Escape is an escape hatch — a lock with no way out
+ *  is the kind of thing that traps someone on a flaky frame. */
+function holdScroll(y: number, ms: number) {
+  const eat = (e: Event) => e.preventDefault();
+  const KEYS = new Set([' ', 'PageDown', 'PageUp', 'Home', 'End', 'ArrowDown', 'ArrowUp']);
+  const eatKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') return release();
+    if (KEYS.has(e.key)) e.preventDefault();
+  };
+  const snap = () => window.scrollTo(0, y);
+  const opts = { passive: false } as AddEventListenerOptions;
+
+  let done = false;
+  function release() {
+    if (done) return;
+    done = true;
+    window.removeEventListener('wheel', eat, opts);
+    window.removeEventListener('touchmove', eat, opts);
+    window.removeEventListener('keydown', eatKey, opts);
+    window.removeEventListener('scroll', snap);
+  }
+
+  window.addEventListener('wheel', eat, opts);
+  window.addEventListener('touchmove', eat, opts);
+  window.addEventListener('keydown', eatKey, opts);
+  window.addEventListener('scroll', snap);
+  setTimeout(release, ms);
+}
+
+/** Park the flourish over the demo phrase's first line box, so it lands in
+ *  the right place whatever width the paragraph wrapped at. */
+function placeFlourish(body: HTMLElement, flourish: HTMLElement, seg?: HTMLElement) {
+  if (!seg) return;
+  const line = seg.getClientRects()[0];
+  if (!line) return;
+  const box = body.getBoundingClientRect();
+  gsap.set(flourish, {
+    left: line.right - box.left - flourish.offsetWidth * 0.55,
+    top: line.top - box.top - flourish.offsetHeight * 0.62,
   });
 }
 

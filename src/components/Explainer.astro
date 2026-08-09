@@ -4,13 +4,12 @@
  *  Explainer — the plain-language "what this is" paragraph that
  *  sits between the hero and the ribbon.
  *
- *  Words are emitted individually so scroll.ts can brighten them
- *  from grey to cream as the block passes through the viewport.
+ *  Four phrases in it take turns performing when the block scrolls
+ *  into view. The choreography is in scripts/scroll.ts; which phrase
+ *  does what is in data/site.ts.
  * ────────────────────────────────────────────────────────────────
  */
 import { explainer } from '../data/site';
-
-const words = explainer.body.split(' ');
 
 const brace = `<svg viewBox="0 0 18 100" preserveAspectRatio="none" fill="none" aria-hidden="true">
   <path d="M15 1C8 1 10 9 10 21c0 15-8 22-8 29s8 14 8 29c0 12-2 20 5 20"
@@ -26,46 +25,90 @@ const brace = `<svg viewBox="0 0 18 100" preserveAspectRatio="none" fill="none" 
     </span>
 
     <p class="why-body" id="why-body">
-      {words.map((w) => <span class="ww">{w}</span>)}
+      {explainer.parts.map((p, i) => (
+        <>
+          {i > 0 && ' '}
+          <span class="seg" data-demo={p.demo}>{p.text}</span>
+        </>
+      ))}
+
+      {/* Rides along with the `draw` phrase — scroll.ts parks it over
+          that phrase's first line box, so it follows the text however
+          the paragraph happens to wrap. */}
+      <span class="flourish" id="why-flourish" aria-hidden="true">
+        <svg viewBox="0 0 200 140" fill="none">
+          <path id="why-curl"
+            d="M8 112C40 112 44 74 70 74c26 0 34 36 6 44-24 7-32-27-6-49C98 46 140 40 176 18"
+            stroke="url(#whyCurl)" stroke-width="4.5" stroke-linecap="round"/>
+          <g id="why-spark">
+            <path d="M176 4v28M162 18h28M166.1 8.1l19.8 19.8M185.9 8.1l-19.8 19.8"
+              stroke="url(#whyCoral)" stroke-width="6" stroke-linecap="round"/>
+          </g>
+          <circle class="mote" cx="196" cy="46" r="4" fill="#F0845C"/>
+          <circle class="mote" cx="150" cy="8" r="3.5" fill="none" stroke="#9B8BFF" stroke-width="2.5"/>
+          <path class="mote" d="M132 30v10M127 35h10" stroke="#9B8BFF" stroke-width="2.5" stroke-linecap="round"/>
+          <defs>
+            <linearGradient id="whyCurl" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#7B5CF0"/><stop offset="100%" stop-color="#C6A6FF"/>
+            </linearGradient>
+            <linearGradient id="whyCoral" x1="100%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#FFCBA6"/><stop offset="100%" stop-color="#FF5F5F"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </span>
     </p>
   </div>
 </section>
 
 <style>
+  /* Full height and vertically centred, because the section gets pinned
+     while the phrases perform — a short section would leave the reel
+     stranded at the top of a held screen. */
   #why{
     --why-ink:#F4EFE2;
-    --why-dim:#46454E;
     position:relative;z-index:2;padding:0 4vw;
+    min-height:100vh;display:flex;align-items:center;
   }
   .why-in{
-    max-width:1240px;margin:0 auto;
-    padding:clamp(64px,9vw,132px) 0;
+    width:100%;max-width:1240px;margin:0 auto;
+    padding:clamp(56px,7vw,104px) 0;
     border-top:1px solid var(--app-card-border);
     border-bottom:1px solid var(--app-card-border);
   }
 
   /* Small brace-wrapped label, same brackets as the hero lede. */
   .why-label{
-    position:relative;display:inline-block;padding:6px 22px;
-    color:var(--why-ink);font-size:13px;font-weight:var(--fw-black);
+    position:relative;display:inline-block;padding:10px 38px;
+    color:var(--why-ink);font-size:24px;font-weight:var(--fw-black);
     letter-spacing:.4px;margin-bottom:clamp(36px,5vw,72px);
   }
-  .brace{position:absolute;top:0;bottom:0;width:13px;color:var(--why-ink);}
+  .brace{position:absolute;top:0;bottom:0;width:24px;color:var(--why-ink);}
   .brace :global(svg){width:100%;height:100%;display:block;}
   .brace-l{left:0;}
   .brace-r{right:0;transform:scaleX(-1);}
 
   .why-body{
+    position:relative;
     font-family:var(--font-display);font-weight:500;
     font-size:clamp(26px,4.2vw,68px);line-height:1.16;letter-spacing:-.025em;
-    color:var(--why-dim);
+    color:var(--why-ink);
   }
-  /* inline-block so the brighten can be written per word without the
-     line boxes reflowing. The margin is the word space. */
-  .why-body :global(.ww){display:inline-block;margin-right:.26em;}
+  /* SplitText writes these. inline-block so rotation and y offsets
+     actually render on them. */
+  .why-body :global(.seg span){display:inline-block;}
 
-  /* Nothing to scroll through — just read it. */
+  .flourish{
+    position:absolute;left:0;top:0;width:200px;height:140px;
+    pointer-events:none;opacity:0;z-index:2;
+  }
+  .flourish svg{width:100%;height:100%;display:block;overflow:visible;}
+
+  @media (max-width:900px){ .flourish{width:132px;height:92px;} }
+
+  /* Nothing performs and nothing pins — it is just a paragraph. */
   @media (prefers-reduced-motion:reduce){
-    .why-body{color:var(--why-ink);}
+    #why{min-height:0;}
+    .flourish{display:none;}
   }
 </style>
