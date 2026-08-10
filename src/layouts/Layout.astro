@@ -15,10 +15,17 @@ const {
   noindex = false,
 } = Astro.props;
 
-/* Astro.site comes from `site` in astro.config.mjs. Every absolute URL on the
-   page derives from it, so there is exactly one place to change the domain. */
-const canonical = new URL(Astro.url.pathname, Astro.site).href;
-const ogImage = new URL(meta.ogImage, Astro.site).href;
+/* Every absolute URL on the page derives from one base, so the domain lives in
+   one place. Astro.site (from astro.config.mjs) is that base — but it is only
+   populated once the config has been read, and the dev server does not re-read
+   the config on hot reload. Editing astro.config.mjs while `astro dev` is
+   running therefore leaves Astro.site undefined until you restart, and
+   `new URL(path, undefined)` throws a bare "Invalid URL" that points here
+   rather than at the real cause. meta.siteUrl is a plain string and always
+   available, so it backstops that window. Keep the two in sync. */
+const base = Astro.site ?? new URL(meta.siteUrl);
+const canonical = new URL(Astro.url.pathname, base).href;
+const ogImage = new URL(meta.ogImage, base).href;
 const isHome = Astro.url.pathname === '/';
 
 /* ── Structured data ───────────────────────────────────────────────────
