@@ -37,7 +37,7 @@ export const meta = {
 
   /* Powers the JSON-LD Organization + SoftwareApplication blocks. */
   org: {
-    email: 'hello@hudjee.app',
+    email: 'hello@hudjee.com',
     country: 'IN',
     sameAs: [] as string[],   // add social profile URLs as they go live
   },
@@ -424,13 +424,13 @@ export const footer = {
       title: 'Resources', color: '#FFB1E6', // Pink
       links: [
         { label: 'FAQ', href: '#faq' },
-        { label: 'Support', href: 'mailto:hello@hudjee.app' },
+        { label: 'Support', href: `mailto:${meta.org.email}` },
       ]
     },
     {
       title: 'Company', color: '#FF8F00', // Orange
       links: [
-        { label: 'Contact', href: 'mailto:hello@hudjee.app' },
+        { label: 'Contact', href: `mailto:${meta.org.email}` },
       ]
     },
     {

@@ -91,7 +91,7 @@ insert, and the page never touches the key.
 
 1. **Get a Resend key.** Sign up at [resend.com](https://resend.com) (free tier
    is 3,000 emails/month). Copy the API key. You can send from
-   `onboarding@resend.dev` immediately; to send from `@hudjee.app` you'll need
+   `onboarding@resend.dev` immediately; to send from `@hudjee.com` you'll need
    to verify the domain there first.
 
 2. **Set the secrets:**
