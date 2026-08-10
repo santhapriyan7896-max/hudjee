@@ -8,12 +8,46 @@
  */
 
 export const meta = {
-  title: 'HudJee — Practice Daily | Join the waitlist',
+  /* ── Search + social metadata ──────────────────────────────────────
+     `siteUrl` must match the host the site is actually served from,
+     including www. It is the single source of truth for canonical URLs,
+     og:url and every absolute URL in the structured data below.
+     Keep it in sync with `site` in astro.config.mjs.                  */
+  siteUrl: 'https://www.hudjee.com',
+  siteName: 'HudJee',
+  locale: 'en_IN',
+  lang: 'en-IN',
+
+  /* Title stays under ~60 chars so Google shows it whole. Leads with the
+     brand, then the query people actually type. */
+  title: 'HudJee — Daily JEE Practice App | Join the Waitlist',
   description:
-    'HudJee turns exam prep into a daily habit. Adaptive practice, mastery tracking, streaks and friend challenges. Your Readiness Score, recomputed every morning at 5 AM.',
+    'HudJee turns JEE prep into one honest session a day. Adaptive practice on real past papers, streaks, and a Readiness Score that ranks you against every active student at 5 AM. Android, free during beta.',
+
   ogTitle: 'HudJee — Practice Daily',
-  ogDescription: 'Your Readiness Score, recomputed every morning at 5 AM.',
+  ogDescription:
+    'Adaptive JEE practice, 20 questions a day. Your Readiness Score and rank, recomputed every morning at 5 AM.',
+  /* 1200×630. Absolute URL is built from siteUrl in Layout.astro. */
+  ogImage: '/og-image.png',
+  ogImageAlt: 'HudJee — Practice Daily. Adaptive JEE practice, ranked every morning at 5 AM.',
+
+  twitterSite: '',   // e.g. '@hudjeeapp' — leave empty until the handle exists
+
   themeColor: '#000000',
+
+  /* Powers the JSON-LD Organization + SoftwareApplication blocks. */
+  org: {
+    email: 'hello@hudjee.app',
+    country: 'IN',
+    sameAs: [] as string[],   // add social profile URLs as they go live
+  },
+  app: {
+    name: 'HudJee — Practice Daily',
+    category: 'EducationalApplication',
+    os: 'Android',
+    price: '0',
+    currency: 'INR',
+  },
 };
 
 export const nav = {
@@ -383,31 +417,26 @@ export const footer = {
       links: [
         { label: 'Features', href: '#feat' },
         { label: 'How it works', href: '#how' },
-        { label: 'Pricing', href: '#' },
+        { label: 'The score', href: '#score' },
       ]
     },
     {
       title: 'Resources', color: '#FFB1E6', // Pink
       links: [
         { label: 'FAQ', href: '#faq' },
-        { label: 'Support', href: '#' },
-        { label: 'Blog', href: '#' },
+        { label: 'Support', href: 'mailto:hello@hudjee.app' },
       ]
     },
     {
       title: 'Company', color: '#FF8F00', // Orange
       links: [
-        { label: 'About Us', href: '#' },
-        { label: 'Careers', href: '#' },
         { label: 'Contact', href: 'mailto:hello@hudjee.app' },
       ]
     },
     {
       title: 'Legal', color: '#A99BF2', // Purple
       links: [
-        { label: 'Terms of Service', href: '#' },
-        { label: 'Privacy Policy', href: '#' },
-        { label: 'Cookie Policy', href: '#' },
+        { label: 'Privacy Policy', href: '/privacy' },
       ]
     }
   ]

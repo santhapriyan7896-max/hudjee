@@ -1,33 +1,136 @@
 ---
 import '../styles/global.css';
-import { meta } from '../data/site';
+import { meta, faq } from '../data/site';
 
-const canonical = new URL(Astro.url.pathname, Astro.site);
+interface Props {
+  title?: string;
+  description?: string;
+  /** Set true on pages that should stay out of the index (thank-you pages etc). */
+  noindex?: boolean;
+}
+
+const {
+  title = meta.title,
+  description = meta.description,
+  noindex = false,
+} = Astro.props;
+
+/* Astro.site comes from `site` in astro.config.mjs. Every absolute URL on the
+   page derives from it, so there is exactly one place to change the domain. */
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const ogImage = new URL(meta.ogImage, Astro.site).href;
+const isHome = Astro.url.pathname === '/';
+
+/* ── Structured data ───────────────────────────────────────────────────
+   Three graph nodes: who publishes the site, the site itself, and the
+   product. The FAQ block is only emitted on the home page, where the
+   questions actually appear in the markup — Google requires the visible
+   copy to match the schema.                                            */
+const schema: Record<string, unknown>[] = [
+  {
+    '@type': 'Organization',
+    '@id': `${meta.siteUrl}/#organization`,
+    name: meta.siteName,
+    url: `${meta.siteUrl}/`,
+    logo: {
+      '@type': 'ImageObject',
+      url: `${meta.siteUrl}/logo.png`,
+      width: 194,
+      height: 46,
+    },
+    email: meta.org.email,
+    address: { '@type': 'PostalAddress', addressCountry: meta.org.country },
+    ...(meta.org.sameAs.length ? { sameAs: meta.org.sameAs } : {}),
+  },
+  {
+    '@type': 'WebSite',
+    '@id': `${meta.siteUrl}/#website`,
+    url: `${meta.siteUrl}/`,
+    name: meta.siteName,
+    description: meta.description,
+    inLanguage: meta.lang,
+    publisher: { '@id': `${meta.siteUrl}/#organization` },
+  },
+  {
+    '@type': 'SoftwareApplication',
+    '@id': `${meta.siteUrl}/#app`,
+    name: meta.app.name,
+    applicationCategory: meta.app.category,
+    operatingSystem: meta.app.os,
+    description: meta.description,
+    url: `${meta.siteUrl}/`,
+    publisher: { '@id': `${meta.siteUrl}/#organization` },
+    offers: {
+      '@type': 'Offer',
+      price: meta.app.price,
+      priceCurrency: meta.app.currency,
+      availability: 'https://schema.org/PreOrder',
+    },
+  },
+];
+
+if (isHome) {
+  schema.push({
+    '@type': 'FAQPage',
+    '@id': `${meta.siteUrl}/#faq`,
+    mainEntity: faq.items.map((item) => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: { '@type': 'Answer', text: item.a },
+    })),
+  });
+}
+
+const jsonLd = { '@context': 'https://schema.org', '@graph': schema };
 ---
 <!DOCTYPE html>
-<html lang="en">
+<html lang={meta.lang}>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{meta.title}</title>
-  
+
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonical} />
+
+  {noindex
+    ? <meta name="robots" content="noindex, nofollow" />
+    : <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  }
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
-  
-  <meta name="description" content={meta.description} />
-  <link rel="canonical" href={canonical} />
+
   <meta name="theme-color" content={meta.themeColor} />
+
+  <!-- Open Graph -->
   <meta property="og:type" content="website" />
+  <meta property="og:site_name" content={meta.siteName} />
+  <meta property="og:locale" content={meta.locale} />
   <meta property="og:title" content={meta.ogTitle} />
   <meta property="og:description" content={meta.ogDescription} />
   <meta property="og:url" content={canonical} />
+  <meta property="og:image" content={ogImage} />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content={meta.ogImageAlt} />
+
+  <!-- Twitter / X -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content={meta.ogTitle} />
   <meta name="twitter:description" content={meta.ogDescription} />
-  <link rel="icon" href="/assets/logo-icon.png" />
+  <meta name="twitter:image" content={ogImage} />
+  <meta name="twitter:image:alt" content={meta.ogImageAlt} />
+  {meta.twitterSite && <meta name="twitter:site" content={meta.twitterSite} />}
+
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" href="/assets/logo-icon.png" type="image/png" />
   <link rel="apple-touch-icon" href="/assets/logo-icon.png" />
+
   <meta name="generator" content={Astro.generator} />
+
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />
 </head>
 <body>
   <slot />

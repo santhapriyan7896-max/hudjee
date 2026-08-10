@@ -56,8 +56,15 @@ const brace = `<svg viewBox="0 0 18 100" preserveAspectRatio="none" fill="none">
     <span class="deco deco-squiggle"><Fragment set:html={SHAPES.squiggle} /></span>
 
     <h1 class="h-title">
+      {/* The visible headline is emitted as one <span> per character so each
+          glyph can be animated independently. That leaves crawlers and screen
+          readers with a run of separate nodes and no word boundaries, so the
+          real sentence is carried here and the decorative spans are hidden
+          from the accessibility tree. Keep this text identical to
+          hero.lines. */}
+      <span class="visually-hidden">{hero.lines.join(' ')}</span>
       {hero.lines.map((text, li) => (
-        <span class="h-line">
+        <span class="h-line" aria-hidden="true">
           {[...text].map((c, ci) => {
             const swap = hero.swaps.find((s) => s.line === li && s.index === ci);
             return c === ' ' ? (
