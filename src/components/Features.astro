@@ -1,21 +1,48 @@
 ---
 import { features } from '../data/site';
+import { makeParticles } from '../lib/particles';
 import Icon from './Icon.astro';
+
+/* Fewer than the how-it-works field: this section is a busy horizontal
+   carousel and a dense field behind it just reads as noise. Different
+   seed so the two sections aren't the same scatter twice. */
+const PARTICLES = makeParticles(20, 77311902);
+
+/* The card chips are the heading slabs shrunk down — same three inks,
+   same dark text. `tagClass` in the data predates this and describes the
+   old outlined pills, so it maps to an ink here rather than being used
+   as a class. */
+const CHIP_INK: Record<string, string> = {
+  'grad-ring': 'var(--hl-a)',
+  amber: 'var(--hl-b)',
+  purple: 'var(--hl-c)',
+};
 ---
 <div id="feat">
   <div class="feat-pin">
+    <div class="pfield" aria-hidden="true">
+      {PARTICLES.map((p) => (
+        <span class="pt" data-speed={p.speed}
+          style={`left:${p.left}%;top:${p.top}%;--s:${p.size}px;--head:${p.head};--tail:${p.tail}`}></span>
+      ))}
+    </div>
+
     <div class="feat-head rv">
       <p class="eyebrow">{features.eyebrow}</p>
-      <h2 data-split>{features.headline}<br /><em class="grad">{features.headlineAccent}</em></h2>
+      {/* Slab heading — styles and motion are shared, see .hl in global.css. */}
+      <h2 class="hl-stack">
+        <span class="hl hl-a"><span class="hl-t">{features.headline}</span></span>
+        <span class="hl hl-b"><span class="hl-t">{features.headlineAccent}</span></span>
+      </h2>
     </div>
 
     <div class="feat-track" id="ftrack">
       {features.cards.map((c) => (
-        <div class="fcard">
+        <div class="fcard" style={`--accent:${c.color};--chip:${CHIP_INK[c.tagClass] ?? 'var(--hl-a)'}`}>
           <div class="ico"><Icon name={c.icon} size={26} color={c.color} /></div>
           <h3>{c.title}</h3>
           <p>{c.body}</p>
-          <span class:list={['tag', c.tagClass]}>{c.tag}</span>
+          <span class="fchip">{c.tag}</span>
         </div>
       ))}
     </div>
@@ -25,40 +52,95 @@ import Icon from './Icon.astro';
 </div>
 
 <style>
-  #feat{position:relative;height:460vh;z-index:2;}
+  /* One viewport tall, and ScrollTrigger pins it for exactly the track's
+     horizontal travel (see the FEATURES block in scripts/scroll.ts).
+
+     This used to be 460vh with a sticky child *as well as* the JS pin —
+     two scroll budgets stacked. The cards ran out after roughly one
+     viewport of scrolling and the remaining ~360vh scrolled past empty. */
+  #feat{position:relative;height:100vh;z-index:2;}
   .feat-pin{
-    position:sticky;top:0;height:100vh;display:flex;flex-direction:column;
+    position:relative;height:100%;display:flex;flex-direction:column;
     justify-content:center;overflow:hidden;
+    /* The track can't use .wrap — it runs off the right edge — so the
+       gutter is shared here instead, and the heading, the cards and the
+       progress bar all start on the same line. */
+    --gut:max(16px, calc((100vw - var(--max)) / 2));
   }
-  .feat-head{max-width:var(--max);margin:0 auto var(--space-8);padding:0 var(--space-4);width:100%;}
+
+  /* Same contract as the how-it-works field — initParticleField() drives
+     it. Sits behind everything; the track and heading lift above it. */
+  .pfield{position:absolute;inset:0;pointer-events:none;z-index:0;}
+  .pt{
+    position:absolute;
+    width:var(--s);height:var(--s);
+    margin:calc(var(--s) / -2) 0 0 calc(var(--s) / -2);
+    border-radius:var(--radius-pill);
+    background:linear-gradient(180deg,var(--head),var(--tail));
+    will-change:transform;
+  }
+
+  .feat-head{
+    position:relative;z-index:2;
+    margin:0 0 var(--space-8);padding:0 var(--gut);width:100%;
+  }
   .feat-track{
+    position:relative;z-index:2;
     display:flex;gap:var(--space-4);
-    padding:0 max(16px,calc((100vw - var(--max)) / 2));will-change:transform;
+    padding:0 var(--gut);will-change:transform;
   }
+
+  /* Flat tinted panel, matching the step cards — the tint alone separates
+     it from the page, so the hairline border is gone. */
   .fcard{
-    flex:0 0 336px;background:var(--app-card);border-radius:var(--app-r-card);
-    border:1px solid var(--border-default);
-    padding:var(--space-6);transition:border-color .16s,transform .16s cubic-bezier(.2,1.3,.4,1);
+    flex:0 0 336px;
+    background:#17151F;border-radius:26px;
+    padding:28px 28px 30px;
+    display:flex;flex-direction:column;
+    transition:background .2s,transform .22s cubic-bezier(.2,1.3,.4,1);
   }
-  .fcard:hover{border-color:#33323A;}
+  .fcard:hover{background:#1B1926;transform:translateY(-5px);}
+
+  /* The chip carries the card's own accent at low strength, so the tile
+     is tinted by whatever the icon is coloured. */
   .fcard .ico{
-    width:52px;height:52px;border-radius:var(--radius-md);background:var(--app-elevated);
-    display:grid;place-items:center;margin-bottom:var(--space-5);
+    width:56px;height:56px;border-radius:18px;
+    background:#1E1D26;
+    background:color-mix(in srgb, var(--accent) 15%, #17151F);
+    display:grid;place-items:center;margin-bottom:26px;
   }
   .fcard h3{font-size:21px;margin-bottom:var(--space-3);}
-  .fcard p{color:var(--app-text-2);font-size:15px;font-weight:var(--fw-semibold);line-height:1.5;}
-  .fcard .tag{display:inline-block;margin-top:var(--space-5);}
-  .feat-bar{max-width:var(--max);margin:var(--space-7) auto 0;padding:0 var(--space-4);width:100%;}
+  .fcard p{
+    color:var(--app-text-2);font-size:15px;font-weight:var(--fw-semibold);
+    line-height:1.5;margin-bottom:var(--space-5);
+  }
+
+  /* The heading slabs shrunk to a chip: solid ink, dark text. margin-top
+     :auto lines them all up along the bottom of the row however long the
+     copy runs, and the paragraph's margin keeps a floor under the gap. */
+  .fchip{
+    align-self:flex-start;margin-top:auto;
+    padding:6px 13px;border-radius:var(--radius-pill);
+    font-size:10px;font-weight:var(--fw-black);
+    text-transform:uppercase;letter-spacing:.7px;
+    color:var(--app-bg);background:var(--chip);
+  }
+
+  .feat-bar{
+    position:relative;z-index:2;
+    margin:var(--space-7) 0 0;padding:0 var(--gut);width:100%;
+  }
   .feat-bar .t{height:8px;background:#232227;border-radius:var(--radius-pill);overflow:hidden;}
   .feat-bar .t i{
     display:block;height:100%;width:0;border-radius:var(--radius-pill);
     background:linear-gradient(90deg,var(--app-grad-start),var(--app-grad-end));
   }
-  @media (max-width:960px){ #feat{height:400vh;} .fcard{flex:0 0 280px;} }
+  @media (max-width:960px){ .fcard{flex:0 0 280px;} }
   @media (prefers-reduced-motion:reduce){
     #feat{height:auto;}
     .feat-pin{position:static;height:auto;padding:80px 0;}
     .feat-track{flex-wrap:wrap;justify-content:center;transform:none!important;}
     .feat-bar{display:none;}
+    .pfield{display:none;}
   }
 </style>

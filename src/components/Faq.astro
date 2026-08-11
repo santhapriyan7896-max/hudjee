@@ -1,17 +1,41 @@
 ---
 import { faq } from '../data/site';
+import { makeParticles } from '../lib/particles';
+import { INK_PAIRS } from '../lib/ink';
+
+const PARTICLES = makeParticles(16, 40518823);
+
+/* A pennant per row, cycling the inks — rounded top, notched foot. The
+   colour comes from currentColor so the row only has to set --ink. */
+const flag = `<svg viewBox="0 0 26 34" fill="none" aria-hidden="true">
+  <path d="M1 4a3 3 0 0 1 3-3h18a3 3 0 0 1 3 3v29l-12-8.5L1 33V4Z" fill="currentColor"/>
+</svg>`;
 ---
 <section class="pad" id="faq">
+  <div class="pfield" aria-hidden="true">
+    {PARTICLES.map((p) => (
+      <span class="pt" data-speed={p.speed}
+        style={`left:${p.left}%;top:${p.top}%;--s:${p.size}px;--head:${p.head};--tail:${p.tail}`}></span>
+    ))}
+  </div>
+
   <div class="wrap">
-    <div class="sec-head center rv">
+    <div class="sec-head rv">
       <p class="eyebrow">{faq.eyebrow}</p>
-      <h2 data-split>{faq.headline}</h2>
+      {/* Slab heading — styles and motion are shared, see .hl in global.css. */}
+      <h2 class="hl-stack">
+        <span class="hl hl-a"><span class="hl-t">{faq.headline}</span></span>
+        <span class="hl hl-b"><span class="hl-t">{faq.headlineAccent}</span></span>
+      </h2>
     </div>
+
     <div class="faq rv">
       {faq.items.map((item, i) => (
-        <div class="q">
+        <div class="q" style={`--ink:${INK_PAIRS[i % INK_PAIRS.length][1]}`}>
           <button type="button" aria-expanded="false" aria-controls={`faq-a-${i}`}>
-            <span>{item.q}</span><span class="chev" aria-hidden="true">+</span>
+            <span class="flag"><Fragment set:html={flag} /></span>
+            <span class="qt">{item.q}</span>
+            <span class="chev" aria-hidden="true">+</span>
           </button>
           <div class="a" id={`faq-a-${i}`}><p>{item.a}</p></div>
         </div>
@@ -21,25 +45,66 @@ import { faq } from '../data/site';
 </section>
 
 <style>
-  .faq{max-width:780px;margin:0 auto;}
-  .q{background:var(--app-card);border-radius:var(--app-r-tile);margin-bottom:10px;overflow:hidden;}
+  #faq{overflow:hidden;}
+  #faq .wrap{position:relative;z-index:2;}
+
+  .pfield{position:absolute;inset:0;pointer-events:none;z-index:1;}
+  .pt{
+    position:absolute;
+    width:var(--s);height:var(--s);
+    margin:calc(var(--s) / -2) 0 0 calc(var(--s) / -2);
+    border-radius:var(--radius-pill);
+    background:linear-gradient(180deg,var(--head),var(--tail));
+    will-change:transform;
+  }
+
+  /* ── Rows ────────────────────────────────────────────────────────
+     Hairline-separated rows rather than floating tiles: the question
+     is the biggest thing on the row and the flag carries the colour,
+     so the list reads as an index instead of a stack of buttons. */
+  .faq{border-top:1px solid var(--app-card-border);}
+  .q{border-bottom:1px solid var(--app-card-border);}
+
   .q button{
-    width:100%;background:none;border:none;text-align:left;padding:20px var(--space-5);
-    font-size:16px;font-weight:var(--fw-extrabold);display:flex;justify-content:space-between;
-    align-items:center;gap:var(--space-4);cursor:pointer;transition:background .12s;
+    width:100%;background:none;border:0;cursor:pointer;text-align:left;color:inherit;
+    display:grid;grid-template-columns:auto 1fr auto;align-items:center;
+    gap:clamp(16px,3vw,40px);
+    padding:clamp(18px,2.6vw,30px) clamp(8px,1.5vw,18px);
+    transition:background .16s;
   }
-  .q button:hover{background:var(--app-elevated);}
-  .q button:focus-visible{outline:2px solid var(--app-purple);outline-offset:-2px;}
+  .q button:hover{background:#121118;}
+  .q button:focus-visible{outline:2px solid var(--app-purple);outline-offset:-3px;}
+
+  .flag{display:block;width:clamp(20px,2vw,26px);color:var(--ink);}
+  .flag :global(svg){width:100%;height:auto;display:block;}
+
+  .qt{
+    font-family:var(--font-display);font-weight:var(--fw-black);
+    font-size:clamp(19px,2.5vw,33px);line-height:1.14;letter-spacing:-.5px;
+  }
+
   .chev{
-    width:26px;height:26px;border-radius:var(--radius-sm);background:var(--app-elevated);
-    color:var(--app-purple);display:grid;place-items:center;font-size:17px;line-height:1;
-    flex-shrink:0;transition:transform .18s cubic-bezier(.2,1.3,.4,1);
+    width:34px;height:34px;border-radius:var(--radius-pill);
+    background:var(--app-elevated);color:var(--ink);
+    display:grid;place-items:center;font-size:20px;line-height:1;
+    flex-shrink:0;transition:transform .2s cubic-bezier(.2,1.3,.4,1),background .16s;
   }
-  .q:global(.open) .chev{transform:rotate(135deg);}
-  .a{max-height:0;overflow:hidden;transition:max-height .28s cubic-bezier(.2,1,.4,1);}
+  .q:global(.open) .chev{transform:rotate(135deg);background:var(--ink);color:var(--app-bg);}
+
+  .a{max-height:0;overflow:hidden;transition:max-height .3s cubic-bezier(.2,1,.4,1);}
   .a p{
-    color:var(--app-text-2);font-size:15px;font-weight:var(--fw-semibold);
-    line-height:1.55;padding:0 var(--space-5) 20px;
+    color:var(--app-text-2);font-size:16px;font-weight:var(--fw-semibold);
+    line-height:1.6;max-width:760px;
+    /* Sits under the question, not under the flag. */
+    padding:0 clamp(8px,1.5vw,18px) clamp(22px,2.4vw,30px);
+    margin-left:calc(clamp(20px,2vw,26px) + clamp(16px,3vw,40px));
   }
-  @media (prefers-reduced-motion:reduce){ .a{max-height:none;} }
+
+  @media (max-width:600px){
+    .a p{margin-left:0;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .a{max-height:none;}
+    .pfield{display:none;}
+  }
 </style>

@@ -32,6 +32,12 @@
   --font-body: Mori, Arial, Helvetica, "Segoe UI", Roboto, "Open Sans", sans-serif;
   --font-question: Mori, Arial, Helvetica, "Segoe UI", Roboto, "Open Sans", sans-serif;
   --max:1180px;
+
+  /* Highlighter slabs — see .hl below. Also the source for the little
+     chips on the feature cards, so the two stay in step. */
+  --hl-a:#F1DCFB;
+  --hl-b:#F2963C;
+  --hl-c:#FFD6F0;
 }
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -75,6 +81,41 @@ h2{font-size:clamp(30px,4.6vw,52px);}
   color:var(--app-text-2);font-size:16px;font-weight:var(--fw-bold);
   max-width:560px;line-height:1.55;
 }
+
+/* ── Highlighted section headings ─────────────────────────────────
+   Two slabs, the second kicked right and tucked under the first so
+   they overlap the way a marker pass would. The top one drops a
+   shadow onto the one below — that band is what stops the pair
+   reading as a single flat shape.
+
+   Both colours are the ends of the brand ramp pushed into a register
+   that survives being blown up to this size: --app-amber is a stroke
+   colour and turns to mud across an area this big.
+
+   initHighlightHeadings() in scripts/scroll.ts animates any .hl-stack
+   it finds, so a new section only has to use the markup. */
+.hl-stack{display:flex;flex-direction:column;align-items:flex-start;}
+.hl{
+  display:inline-block;
+  padding:.09em .3em .17em;
+  border-radius:12px;
+  line-height:1.14;
+  color:var(--app-bg);
+  transform-origin:left center;
+}
+/* The words are children of the slab and so ride its scaleX — they get
+   held back until it has finished sweeping, or they arrive stretched. */
+.hl-t{display:inline-block;}
+.hl-a{
+  position:relative;z-index:1;
+  background:var(--hl-a);
+  box-shadow:0 12px 24px rgba(0,0,0,.7);
+}
+.hl-b{margin-left:1.15em;margin-top:-.1em;background:var(--hl-b);}
+@media (max-width:960px){
+  .hl-b{margin-left:.55em;}
+  .hl{border-radius:10px;}
+}
 .center .lede{margin-left:auto;margin-right:auto;}
 .sec-head{margin-bottom:56px;}
 section.pad{padding:120px 0;position:relative;z-index:2;}
@@ -103,11 +144,37 @@ section.pad{padding:120px 0;position:relative;z-index:2;}
   box-shadow:0 10px 30px rgba(123,104,232,.22),0 4px 18px rgba(201,161,124,.14);
 }
 .btn-primary:active{transform:translateY(0);}
-/* On a card surface the interior must match the card, not the page. */
-.on-card .btn-primary{
-  background:
-    linear-gradient(var(--app-card),var(--app-card)) padding-box,
-    var(--app-grad) border-box;
+
+/* ── Wipe buttons ─────────────────────────────────────────────────
+   Solid at rest; on hover the fill slides out to the right and leaves
+   its own outline behind. The fill is a pill in its own right, so the
+   edge that crosses the label is rounded rather than a straight wipe.
+
+   The label sits above the fill and turns from the page colour to the
+   ink as it passes under. Tint a single button by setting --wipe-ink
+   on it; cream is the house default and matches the nav.
+   ──────────────────────────────────────────────────────────────── */
+.btn-wipe{
+  --wipe-ink:#F4F4EB;
+  position:relative;overflow:hidden;isolation:isolate;
+  background:transparent;
+  border:2px solid var(--wipe-ink);
+  border-radius:var(--radius-pill);
+  color:var(--app-bg);
+  transition:color .34s cubic-bezier(.65,0,.35,1);
+}
+.btn-wipe::before{
+  content:'';position:absolute;inset:0;z-index:-1;
+  border-radius:inherit;background:var(--wipe-ink);
+  transition:transform .42s cubic-bezier(.65,0,.35,1);
+}
+.btn-wipe:hover,
+.btn-wipe:focus-visible{color:var(--wipe-ink);}
+/* 101% so no hairline of fill survives at the trailing edge. */
+.btn-wipe:hover::before,
+.btn-wipe:focus-visible::before{transform:translateX(101%);}
+@media (prefers-reduced-motion:reduce){
+  .btn-wipe,.btn-wipe::before{transition:none;}
 }
 .btn-outline{
   background:transparent;border:2px solid var(--app-card-border);color:var(--app-text-2);

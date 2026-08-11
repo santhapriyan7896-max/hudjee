@@ -1,31 +1,66 @@
 ---
 import { stats } from '../data/site';
+import { INK_PAIRS } from '../lib/ink';
+
+/* One mark per stat, in the same order as the inks. Small and flat —
+   they punctuate the number rather than competing with it. */
+const MARKS = [
+  `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="5"/></svg>`,
+  `<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="3" fill="currentColor" transform="rotate(45 12 12)"/></svg>`,
+  `<svg viewBox="0 0 24 24"><g fill="currentColor"><circle cx="8.5" cy="8.5" r="6"/><circle cx="15.5" cy="8.5" r="6"/><circle cx="8.5" cy="15.5" r="6"/><circle cx="15.5" cy="15.5" r="6"/></g></svg>`,
+  `<svg viewBox="0 0 24 24"><path d="M2 20a10 10 0 0 1 20 0z" fill="currentColor"/></svg>`,
+];
 ---
 <div class="band">
   <div class="wrap stats">
-    {stats.map((s, i) => (
-      <div class="stat rv" style={`transition-delay:${i * 0.05}s`}>
-        <div class="n" data-count={s.count} data-prefix={s.prefix ?? ''} data-suffix={s.suffix ?? ''}>0</div>
-        <div class="l">{s.label}</div>
-      </div>
-    ))}
+    {stats.map((s, i) => {
+      const [head, tail] = INK_PAIRS[i % INK_PAIRS.length];
+      return (
+        <div class="stat rv" style={`--head:${head};--tail:${tail};transition-delay:${i * 0.05}s`}>
+          <span class="mark"><Fragment set:html={MARKS[i % MARKS.length]} /></span>
+          <div class="n" data-count={s.count} data-prefix={s.prefix ?? ''} data-suffix={s.suffix ?? ''}>0</div>
+          <div class="l">{s.label}</div>
+        </div>
+      );
+    })}
   </div>
 </div>
 
 <style>
   .band{
     border-top:2px solid var(--app-card-border);border-bottom:2px solid var(--app-card-border);
-    background:#0D0D10;padding:56px 0;position:relative;z-index:2;
+    background:#0D0D10;padding:52px 0;position:relative;z-index:2;
   }
-  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-6);text-align:center;}
+  /* No gap — the hairline between cells is what separates them, so the
+     four read as one strip rather than four floating blocks. */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;text-align:center;}
+  .stat{position:relative;padding:0 var(--space-4);}
+  .stat + .stat::before{
+    content:'';position:absolute;left:0;top:4px;bottom:4px;width:1px;
+    background:var(--app-card-border);
+  }
+
+  .mark{
+    display:block;width:22px;height:22px;margin:0 auto 16px;
+    color:var(--tail);
+  }
+  .mark :global(svg){width:100%;height:100%;display:block;}
+
+  /* Each stat runs its own ink instead of all four sharing the house
+     gradient — the strip was one colour repeated four times. */
   .stat .n{
     font-size:clamp(32px,4.2vw,52px);font-weight:var(--fw-black);line-height:1;
-    background:linear-gradient(120deg,var(--app-grad-start),var(--app-grad-end));
+    background:linear-gradient(120deg,var(--tail),var(--head));
     -webkit-background-clip:text;background-clip:text;color:transparent;
   }
   .stat .l{
     font-size:13px;color:var(--app-text-2);margin-top:var(--space-3);
     font-weight:var(--fw-extrabold);text-transform:uppercase;letter-spacing:.8px;
   }
-  @media (max-width:600px){ .stats{grid-template-columns:1fr 1fr;gap:var(--space-7);} }
+
+  @media (max-width:600px){
+    .stats{grid-template-columns:1fr 1fr;gap:var(--space-7) 0;}
+    /* The third cell starts a new row, so its left rule would float. */
+    .stat:nth-child(odd)::before{display:none;}
+  }
 </style>

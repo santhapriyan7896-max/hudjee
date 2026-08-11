@@ -78,6 +78,9 @@ export function initScroll() {
     });
   }
 
+  // --- HIGHLIGHTED HEADINGS ---
+  initHighlightHeadings();
+
   // --- EXPLAINER ---
   initExplainer();
 
@@ -90,6 +93,16 @@ export function initScroll() {
   // --- DRIFTING SHAPE FIELDS ---
   initDecor('#streak', 300);
   initDecor('#score', 220);
+  /* A short lift: these shapes are clipped to the CTA card rather than a
+     full section, so a big drift just slides them out of frame. */
+  initDecor('#join-sec', 70);
+
+  // --- PARTICLE FIELDS ---
+  initParticleField('#how', 320);
+  /* #feat is pinned, so its progress covers the whole pinned journey —
+     a smaller lift and the drift finishes before the cards do. */
+  initParticleField('#feat', 420);
+  initParticleField('#faq', 260);
 
   // --- STREAK ---
   const streakSec = $('#streak');
@@ -143,7 +156,9 @@ export function initScroll() {
     ScrollTrigger.create({
       trigger: featSec,
       start: "top top",
-      end: () => `+=${ftrack.scrollWidth - window.innerWidth + 40}`,
+      /* Floor at 1: on a display wide enough to fit the whole track this
+         goes negative, which would put the end before the start. */
+      end: () => `+=${Math.max(1, ftrack.scrollWidth - window.innerWidth + 40)}`,
       pin: true,
       scrub: 1,
       onUpdate: (self) => {
@@ -681,6 +696,135 @@ function initRibbon() {
 
   /* Web fonts land after first paint and change every width we cached. */
   document.fonts?.ready.then(() => ScrollTrigger.refresh());
+}
+
+/* ── Particle field — parallax drift + motion streaks ────────────────
+ *
+ *  Two things at once. Each dot lifts against the scroll at its own
+ *  speed, and while the page is actually moving it smears along the
+ *  travel axis the way a long exposure smears a moving light, then
+ *  relaxes back to a circle once things settle.
+ *
+ *  Driven off its own rAF loop, not the trigger's onUpdate and not
+ *  gsap.ticker. onUpdate stops firing the moment the scroll stops, which
+ *  is exactly when the relax needs to run; and gsap.ticker sleeps once
+ *  nothing else on the page is animating, which left the dots frozen
+ *  mid-streak. The loop only runs while the section is on screen.
+ * ─────────────────────────────────────────────────────────────────── */
+function initParticleField(selector: string, lift = 320) {
+  const sec = document.querySelector<HTMLElement>(selector);
+  if (!sec) return;
+
+  const pts = Array.from(sec.querySelectorAll<HTMLElement>('.pt'));
+  if (!pts.length) return;
+
+  const speeds = pts.map((p) => parseFloat(p.dataset.speed || '1'));
+  const stretch = pts.map(() => 1);
+
+  let progress = 0;
+  let lastY = window.scrollY;
+  let vel = 0;
+
+  const tick = () => {
+    const y = window.scrollY;
+    /* Smoothed, because raw per-frame deltas jitter enough to make the
+       streaks flicker on a trackpad. */
+    vel += (y - lastY - vel) * 0.3;
+    lastY = y;
+
+    const mag = Math.abs(vel);
+
+    for (let i = 0; i < pts.length; i++) {
+      const speed = speeds[i];
+      const target = 1 + Math.min(mag * 0.075 * speed, 7);
+      /* Snap out, drift back: a symmetrical ease reads as a wobble. */
+      const cur = stretch[i] + (target - stretch[i]) * (target > stretch[i] ? 0.4 : 0.12);
+      stretch[i] = cur;
+      /* Pinch the waist as it stretches, or a long streak looks fat. */
+      const squeeze = 1 / (1 + (cur - 1) * 0.14);
+
+      pts[i].style.transform =
+        `translate3d(0,${(-progress * lift * speed).toFixed(1)}px,0) scale(${squeeze.toFixed(3)},${cur.toFixed(3)})`;
+    }
+  };
+
+  let raf = 0;
+  const loop = () => {
+    tick();
+    raf = requestAnimationFrame(loop);
+  };
+  const attach = () => {
+    if (raf) return;
+    lastY = window.scrollY; // or the first frame reads as one huge jump
+    raf = requestAnimationFrame(loop);
+  };
+  const detach = () => {
+    if (!raf) return;
+    cancelAnimationFrame(raf);
+    raf = 0;
+  };
+
+  const st = ScrollTrigger.create({
+    trigger: sec,
+    start: 'top bottom',
+    end: 'bottom top',
+    onUpdate: (self) => { progress = self.progress; },
+    onToggle: (self) => (self.isActive ? attach() : detach()),
+  });
+
+  /* A reload that restores scroll, or a #how deep link, lands us inside
+     the section on the very first frame — and a trigger that is already
+     active when it is created never fires onToggle. Without this the
+     field would sit dead for anyone who didn't arrive from the top. */
+  if (st.isActive) {
+    progress = st.progress;
+    attach();
+  }
+
+  gsap.from(pts, {
+    opacity: 0,
+    duration: 0.6,
+    stagger: { amount: 0.5, from: 'random' },
+    scrollTrigger: { trigger: sec, start: 'top 80%', once: true },
+  });
+}
+
+/* ── Highlighted headings — marker sweep ─────────────────────────────
+   Each slab wipes out from its left edge like a highlighter pass, then
+   the words land on top of it. The words are held at opacity 0 until
+   the slab is all but finished: they are children of the slab, so they
+   ride its scaleX, and fading them in early would show them stretched.
+
+   Two slabs stagger a beat apart, which walks the eye down the same
+   diagonal the layout already sets up.
+   ──────────────────────────────────────────────────────────────────── */
+function initHighlightHeadings() {
+  document.querySelectorAll<HTMLElement>('.hl-stack').forEach((stack) => {
+    const slabs = Array.from(stack.querySelectorAll<HTMLElement>('.hl'));
+    if (!slabs.length) return;
+
+    const tl = gsap.timeline({
+      scrollTrigger: { trigger: stack, start: 'top 82%' },
+    });
+
+    slabs.forEach((slab, i) => {
+      const at = i * 0.22;
+
+      tl.from(slab, {
+        scaleX: 0,
+        transformOrigin: 'left center',
+        duration: 0.62,
+        ease: 'power3.out',
+      }, at);
+
+      tl.from(slab.querySelector('.hl-t'), {
+        opacity: 0,
+        x: -18,
+        duration: 0.42,
+        ease: 'power2.out',
+      }, at + 0.42);
+    });
+  });
 }
 
 /* ── Reveal on scroll (GSAP) ─────────────────────────────────────────── */
