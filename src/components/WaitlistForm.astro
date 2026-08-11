@@ -30,7 +30,7 @@ const proof = f.socialProof;
       </div>
       <!-- Honeypot: bots fill it, humans never see it. -->
       <input type="text" name="company" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
-      <button type="submit" class="btn btn-primary">
+      <button type="submit" class="btn btn-wipe">
         <span class="btn-label">{f.submit}</span>
         <span class="spinner" aria-hidden="true"></span>
       </button>
@@ -276,16 +276,12 @@ const proof = f.socialProof;
   .field select option{background:#141318;color:#fff;}
 
   /* Button spinner while the request is in flight. */
+  /* Sizing only — fill, outline and hover wipe come from .btn-wipe in
+     global.css. A background here would sit on top of the wipe layer
+     and the effect would never show. */
   .btn{
     position:relative;padding:17px 28px;font-size:16px;
-    /* A faint gradient wash inside the ring so the primary action
-       doesn't read as secondary against the filled inputs. */
-    background:
-      linear-gradient(var(--app-card),var(--app-card)) padding-box,
-      var(--app-grad) border-box;
-    box-shadow:inset 0 0 0 100px rgba(123,104,232,.05);
   }
-  .btn:hover{box-shadow:inset 0 0 0 100px rgba(123,104,232,.10),0 8px 26px rgba(123,104,232,.18);}
   .spinner{
     position:absolute;width:17px;height:17px;border-radius:50%;
     border:2px solid rgba(255,255,255,.25);border-top-color:#fff;
@@ -329,7 +325,9 @@ const proof = f.socialProof;
   }
   .avatars{display:flex;}
   .avatars span{
-    width:34px;height:34px;border-radius:var(--radius-circle);border:3px solid var(--app-card);
+    /* The ring fakes a gap between overlapping avatars, so it has to be
+       the colour behind them — the page, now the card is unfilled. */
+    width:34px;height:34px;border-radius:var(--radius-circle);border:3px solid var(--app-bg);
     margin-left:-11px;display:grid;place-items:center;
     font-size:12px;font-weight:var(--fw-black);color:#0A0A0C;
   }

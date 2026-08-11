@@ -10,6 +10,7 @@
  * ────────────────────────────────────────────────────────────────
  */
 import { how } from '../data/site';
+import { makeParticles } from '../lib/particles';
 
 /* The scalloped ring is a circle whose radius wobbles — easier to
    generate than to hand-write as 12 bezier lobes. */
@@ -44,12 +45,27 @@ const brace = `<svg viewBox="0 0 18 100" preserveAspectRatio="none" fill="none" 
   <path d="M15 1C8 1 10 9 10 21c0 15-8 22-8 29s8 14 8 29c0 12-2 20 5 20"
     stroke="currentColor" stroke-width="1.6" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
 </svg>`;
+
+/* Dots scattered over the whole section — they drift against the scroll
+   and smear into streaks while the page moves. */
+const PARTICLES = makeParticles(34, 20260810);
 ---
 <section class="pad" id="how">
+  <div class="pfield" aria-hidden="true">
+    {PARTICLES.map((p) => (
+      <span class="pt" data-speed={p.speed}
+        style={`left:${p.left}%;top:${p.top}%;--s:${p.size}px;--head:${p.head};--tail:${p.tail}`}></span>
+    ))}
+  </div>
+
   <div class="wrap">
     <div class="sec-head rv">
       <p class="eyebrow">{how.eyebrow}</p>
-      <h2 data-split>{how.headline} <em class="grad">{how.headlineAccent}</em></h2>
+      {/* Slab heading — styles and motion are shared, see .hl in global.css. */}
+      <h2 class="hl-stack">
+        <span class="hl hl-a"><span class="hl-t">{how.headline}</span></span>
+        <span class="hl hl-b"><span class="hl-t">{how.headlineAccent}</span></span>
+      </h2>
       <p class="lede">{how.lede}</p>
     </div>
 
@@ -88,7 +104,24 @@ const brace = `<svg viewBox="0 0 18 100" preserveAspectRatio="none" fill="none" 
 </section>
 
 <style>
-  h2 em{font-style:normal;}
+  /* Clipped so a drifting shape never widens the page, and the content
+     rides above the decor layer. */
+  #how{overflow:hidden;}
+  #how .wrap{position:relative;z-index:2;}
+
+  /* ── Particle field ──────────────────────────────────────────────
+     A dot is a circle until JS stretches it: the pill radius means a
+     scaleY leaves rounded caps instead of a hard-edged bar. */
+  .pfield{position:absolute;inset:0;pointer-events:none;z-index:1;}
+  .pt{
+    position:absolute;
+    width:var(--s);height:var(--s);
+    margin:calc(var(--s) / -2) 0 0 calc(var(--s) / -2);
+    border-radius:var(--radius-pill);
+    background:linear-gradient(180deg,var(--head),var(--tail));
+    will-change:transform;
+  }
+
   .sec-head .lede{margin-top:var(--space-4);}
   .s-sprite{position:absolute;width:0;height:0;}
 
@@ -127,5 +160,9 @@ const brace = `<svg viewBox="0 0 18 100" preserveAspectRatio="none" fill="none" 
     .step{min-height:0;}
     .s-art{padding:26px 0;}
     .s-art svg{width:min(46%,150px);}
+  }
+  /* Without the scroll motion the field is just specks on the page. */
+  @media (prefers-reduced-motion:reduce){
+    .pfield{display:none;}
   }
 </style>

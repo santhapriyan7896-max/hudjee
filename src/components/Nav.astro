@@ -24,7 +24,7 @@ import { nav } from '../data/site';
     
     <div class="nav-right">
       <a href="#waitlist" class="nav-login">Login/Create Account</a>
-      <a href={nav.cta.href} class="btn-nav-outline">{nav.cta.label}</a>
+      <a href={nav.cta.href} class="btn-nav-outline btn-wipe">{nav.cta.label}</a>
     </div>
   </div>
 </header>
@@ -134,24 +134,20 @@ import { nav } from '../data/site';
     margin-right: 8px;
   }
 
-  /* Outline CTA Button matching GSAP */
+  /* Sizing only — the fill, outline and hover wipe come from .btn-wipe
+     in global.css. Anything set here would beat it: Astro scopes this
+     rule with an attribute selector, so it outranks the global class.
+     A 1px border, though, so the nav button stays lighter than the
+     page's full-size CTAs. */
   .btn-nav-outline {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     padding: 8px 22px;
-    border-radius: 50px;
-    border: 1px solid #F4F4EB;
-    color: #F4F4EB;
+    border-width: 1px;
     font-size: 14px;
     font-weight: 700;
     text-decoration: none;
-    transition: all 0.2s;
-  }
-
-  .btn-nav-outline:hover {
-    background: #F4F4EB;
-    color: #0E100F;
   }
 
   @media (max-width: 960px) {

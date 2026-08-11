@@ -298,7 +298,8 @@ export const stats = [
 
 export const faq = {
   eyebrow: 'Questions',
-  headline: 'Straight answers.',
+  headline: 'Straight',
+  headlineAccent: 'answers.',
   items: [
     { q: 'When does the beta open?', a: 'Invites go out in waves, starting with final-year and repeat batches. Waitlist position and batch both matter — join early and pick your batch so we can slot you into the right wave.' },
     { q: 'Is it free?', a: "Fully free through the beta. After launch there's a free tier that keeps daily practice, streaks and your Readiness Score intact, plus premium for adaptive mode, the full question bank and deeper analytics." },
@@ -306,6 +307,22 @@ export const faq = {
     { q: 'How is the rank calculated?', a: "Your Readiness Score is normalised 0–100 against all active HudJee users on a rolling 30-day window, then ranked. It's a rank among students practising on the app — a training signal, not a prediction of your actual exam result." },
     { q: 'Can I use it alongside my coaching?', a: "That's the intent. Filter to exactly the chapter your class covered today and run a 20-minute session on it. HudJee is the daily-reps layer on top of whatever syllabus you already follow." },
     { q: 'What happens to my data?', a: 'Your email is used for beta invites and product updates only. Practice data drives your own score and rank — never sold, never shared with coaching institutes.' },
+  ],
+};
+
+/** Placeholder hrefs — swap the '#'s for the real handles (and swap the
+    channels themselves if the mix is wrong). */
+export const community = {
+  panel: {
+    eyebrow: 'Community',
+    title: 'Practise with the batch.',
+    body: 'Daily question drops, overnight rank movement and the batch chatter — most of the waitlist is already in there.',
+    cta: { label: 'Join the Telegram', href: '#' },
+  },
+  cards: [
+    { eyebrow: 'Follow along', title: 'Instagram', icon: 'instagram', href: '#' },
+    { eyebrow: 'Watch',        title: 'YouTube',   icon: 'youtube',   href: '#' },
+    { eyebrow: 'Ask anything', title: 'WhatsApp',  icon: 'whatsapp',  href: '#' },
   ],
 };
 
