@@ -1,4 +1,12 @@
+# https://www.hudjee.com
 User-agent: *
 Allow: /
 
-Sitemap: https://hudjee.app/sitemap-index.xml
+# Block the noise, not the crawlers.
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Crawl-delay: 10
+
+Sitemap: https://www.hudjee.com/sitemap-index.xml
