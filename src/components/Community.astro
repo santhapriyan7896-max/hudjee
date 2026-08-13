@@ -39,7 +39,7 @@ const pennant = `<svg viewBox="0 0 26 34" fill="none" aria-hidden="true">
         <p class="eyebrow">{community.panel.eyebrow}</p>
         <h2>{community.panel.title}</h2>
         <p class="lede">{community.panel.body}</p>
-        <a class="join btn-wipe" href={community.panel.cta.href}>{community.panel.cta.label}</a>
+        <a class="join btn-wipe" href={community.panel.cta.href} target="_blank" rel="noopener">{community.panel.cta.label}</a>
       </div>
 
       <div class="panel-art" aria-hidden="true">
@@ -49,7 +49,7 @@ const pennant = `<svg viewBox="0 0 26 34" fill="none" aria-hidden="true">
 
     <div class="tiles">
       {community.cards.map((c, i) => (
-        <a class="tile rv" href={c.href} style={`transition-delay:${i * 0.05}s`}>
+        <a class="tile rv" href={c.href} target="_blank" rel="noopener" style={`transition-delay:${i * 0.05}s`}>
           <span class="tile-ico"><Fragment set:html={GLYPHS[c.icon]} /></span>
           <span class="tile-foot">
             <span class="tile-eyebrow">{c.eyebrow}</span>
@@ -127,7 +127,7 @@ const pennant = `<svg viewBox="0 0 26 34" fill="none" aria-hidden="true">
 
   /* ── Link tiles ──────────────────────────────────────────────── */
   .tiles{
-    display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-4);
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-4);
     margin-top:var(--space-6);
   }
   .tile{

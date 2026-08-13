@@ -39,7 +39,11 @@ export const meta = {
   org: {
     email: 'hello@hudjee.com',
     country: 'IN',
-    sameAs: [] as string[],   // add social profile URLs as they go live
+    sameAs: [
+      'https://t.me/hudjee',
+      'https://www.instagram.com/hudjee_/',
+      'https://www.youtube.com/@hud_jee',
+    ],
   },
   app: {
     name: 'HudJee — Practice Daily',
@@ -344,19 +348,20 @@ export const faq = {
   ],
 };
 
-/** Placeholder hrefs — swap the '#'s for the real handles (and swap the
-    channels themselves if the mix is wrong). */
+/** Channel URLs are also listed in meta.org.sameAs, which is what tells
+    Google these accounts and this site are the same outfit. Add a channel
+    in both places or neither. WhatsApp is deliberately absent — there was
+    no group to point at, and a dead link costs more than a missing one. */
 export const community = {
   panel: {
     eyebrow: 'Community',
     title: 'Practise with the batch.',
     body: 'Daily question drops, overnight rank movement and the batch chatter — most of the waitlist is already in there.',
-    cta: { label: 'Join the Telegram', href: '#' },
+    cta: { label: 'Join the Telegram', href: 'https://t.me/hudjee' },
   },
   cards: [
-    { eyebrow: 'Follow along', title: 'Instagram', icon: 'instagram', href: '#' },
-    { eyebrow: 'Watch',        title: 'YouTube',   icon: 'youtube',   href: '#' },
-    { eyebrow: 'Ask anything', title: 'WhatsApp',  icon: 'whatsapp',  href: '#' },
+    { eyebrow: 'Follow along', title: 'Instagram', icon: 'instagram', href: 'https://www.instagram.com/hudjee_/' },
+    { eyebrow: 'Watch',        title: 'YouTube',   icon: 'youtube',   href: 'https://www.youtube.com/@hud_jee' },
   ],
 };
 
