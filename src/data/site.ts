@@ -401,7 +401,12 @@ export const waitlistForm = {
    *               number — anything else is padding, your call.
    *  minToShow    hides the row until the real count clears this.
    *               0 means always show, counting up from zero.
-   *  pollMs       how often to re-fetch. 0 disables polling.
+   *  realtime     open a websocket and update the instant anyone joins.
+   *               Needs the broadcast trigger from supabase/waitlist.sql.
+   *  pollMs       backstop re-fetch interval. With `realtime` on this is
+   *               only a safety net, so keep it slow — 60s is plenty.
+   *               Turn it up to ~15000 if you set realtime: false.
+   *               0 disables polling entirely.
    *  fallbackCount used only in demo mode, when no Supabase env is set.
    */
   socialProof: {
@@ -409,7 +414,8 @@ export const waitlistForm = {
     suffixOne: 'student already waiting',   // used when the count is 1
     offset: 0,       // added to the real count — keep at 0 for the truth
     minToShow: 0,    // 0 = always show, starting from zero
-    pollMs: 20000,   // 0 disables polling
+    realtime: true,  // websocket push — the number moves live
+    pollMs: 60000,   // backstop only; realtime does the real work
     fallbackCount: 0,
   },
 };

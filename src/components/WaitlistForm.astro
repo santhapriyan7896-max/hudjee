@@ -57,6 +57,7 @@ const proof = f.socialProof;
   <div class="proof" id="proof" hidden
        data-offset={proof.offset} data-min={proof.minToShow}
        data-fallback={proof.fallbackCount} data-poll={proof.pollMs}
+       data-realtime={proof.realtime ? '1' : '0'}
        data-suffix={proof.suffix} data-suffix-one={proof.suffixOne}>
     <div class="avatars" aria-hidden="true">
       <span class="a1">R</span><span class="a2">A</span><span class="a3">S</span><span class="a4">K</span>
@@ -70,6 +71,7 @@ const proof = f.socialProof;
 
 <script>
   import { submitWaitlist, isValidEmail, fetchWaitlistCount } from '../lib/waitlist';
+  import { subscribeBroadcast, realtimeAvailable } from '../lib/realtime';
   import { waitlistForm as copy } from '../data/site';
 
   document.querySelectorAll<HTMLFormElement>('form.wl').forEach((form) => {
@@ -163,10 +165,17 @@ const proof = f.socialProof;
   /* ────────────────────────────────────────────────────────────────
      Live signup counter.
 
-     Polls a security-definer RPC rather than opening a websocket —
-     a Realtime subscription would pull in ~30 KB of client just to
-     watch one integer, which is a bad trade on a landing page.
-     Tab-aware: polling pauses when the page is hidden.
+     Push, not poll. A database trigger broadcasts the new total on
+     every insert (supabase/waitlist.sql), and this listens on a
+     public Realtime channel — so the number moves the instant anyone,
+     anywhere, joins. The websocket is hand-rolled in lib/realtime.ts
+     rather than pulled from @supabase/supabase-js, which would be
+     ~35 KB of client to watch one integer.
+
+     Polling stays on as a slow backstop (`pollMs` in site.ts) for the
+     cases push can't cover: a socket that never connects behind a
+     corporate proxy, a mobile browser that killed it in the
+     background, or a row inserted straight from the dashboard.
      ──────────────────────────────────────────────────────────────── */
   (() => {
     const box = document.getElementById('proof');
@@ -186,21 +195,26 @@ const proof = f.socialProof;
       if (suffixEl) suffixEl.textContent = n === 1 ? one : many;
     };
 
-    let shown = 0;
+    let shown = 0;   // what's on screen this frame
+    let goal = 0;    // where it's heading — what the server last told us
     let raf = 0;
 
     /** Roll the number rather than snapping it. */
     const animateTo = (target: number) => {
+      goal = target;
       if (reduce) { shown = target; out.textContent = target.toLocaleString('en-IN'); setSuffix(target); return; }
       cancelAnimationFrame(raf);
-      // First paint counts up from zero; later updates tick quickly.
+      // Start from what's currently painted, not from the last settled
+      // value — an update mid-roll must continue, never jump back.
       const from = shown;
+      // First paint counts up from zero; later updates tick quickly.
       const dur = from === 0 ? 900 : 420;
       let t0 = 0;
       const step = (ts: number) => {
         if (!t0) t0 = ts;
         const p = Math.min((ts - t0) / dur, 1);
         const v = Math.round(from + (target - from) * (1 - Math.pow(1 - p, 3)));
+        shown = v;
         out.textContent = v.toLocaleString('en-IN');
         setSuffix(v);
         if (p < 1) raf = requestAnimationFrame(step);
@@ -209,26 +223,65 @@ const proof = f.socialProof;
       raf = requestAnimationFrame(step);
     };
 
-    const render = (real: number | null) => {
-      // Demo mode (no Supabase env) falls back to the placeholder.
-      if (real === null) { box.hidden = false; animateTo(fallback); return; }
-      if (real < min) { box.hidden = true; return; }   // too few to be persuasive
-      box.hidden = false;
-      animateTo(real + offset);
+    /** Brief flash when the number moves on its own — otherwise a live
+        update is indistinguishable from a static number. */
+    const pulse = () => {
+      if (reduce) return;
+      out.classList.remove('bumped');
+      void out.offsetWidth;            // restart the animation
+      out.classList.add('bumped');
     };
 
-    const tick = async () => render(await fetchWaitlistCount());
+    let painted = false;
+    const render = (real: number | null, opts: { flash?: boolean } = {}) => {
+      // Demo mode (no Supabase env) falls back to the placeholder.
+      if (real === null) { box.hidden = false; animateTo(fallback); painted = true; return; }
+      const target = real + offset;
+      if (real < min) { box.hidden = true; return; }   // too few to be persuasive
+      box.hidden = false;
+      if (painted && target === goal) return;          // nothing changed — don't re-animate
+      if (opts.flash && painted && target > goal) pulse();
+      painted = true;
+      animateTo(target);
+    };
+
+    const tick = async (flash = false) => render(await fetchWaitlistCount(), { flash });
 
     tick();
-    if (pollMs > 0) {
-      let timer = window.setInterval(() => { if (!document.hidden) tick(); }, pollMs);
-      document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
-      window.addEventListener('pagehide', () => clearInterval(timer));
+
+    /* ── Push ──────────────────────────────────────────────────────
+       The trigger sends { count: <new total> } on the `waitlist`
+       topic. On (re)connect we re-fetch once, because anything that
+       happened while the socket was down was never delivered. */
+    if (box.dataset.realtime === '1' && realtimeAvailable) {
+      subscribeBroadcast(
+        'waitlist',
+        'signup',
+        (payload) => {
+          const n = Number((payload as { count?: unknown }).count);
+          if (Number.isFinite(n)) render(n, { flash: true });
+        },
+        { onOpen: () => { if (painted) tick(true); } },
+      );
     }
 
-    // Own signup bumps the number immediately, before the next poll.
+    /* ── Backstop poll ─────────────────────────────────────────────
+       Slow on purpose: push does the real work. This only catches
+       what push missed. Pauses while the tab is hidden. */
+    if (pollMs > 0) {
+      const timer = window.setInterval(() => { if (!document.hidden) tick(true); }, pollMs);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(true); });
+      window.addEventListener('pagehide', () => window.clearInterval(timer));
+    }
+
+    // Own signup bumps the number immediately, without waiting for the
+    // round trip. The broadcast that follows sets the authoritative
+    // value, so an off-by-one here self-corrects within a second.
     document.addEventListener('waitlist:joined', () => {
-      if (!box.hidden) animateTo(shown + 1);
+      box.hidden = false;
+      painted = true;
+      animateTo(goal + 1);
+      pulse();
     });
   })();
 </script>
@@ -350,7 +403,16 @@ const proof = f.socialProof;
     70%{box-shadow:0 0 0 7px rgba(74,222,128,0)}
     100%{box-shadow:0 0 0 0 rgba(74,222,128,0)}
   }
-  #wl-count{font-variant-numeric:tabular-nums;}
+  /* tabular-nums so the row doesn't reflow as digits change under it. */
+  #wl-count{font-variant-numeric:tabular-nums;display:inline-block;}
+  /* A live update that looks identical to a static number isn't
+     communicating anything — so the digit lifts when it moves. */
+  #wl-count:global(.bumped){animation:countBump .5s cubic-bezier(.2,1.4,.4,1);}
+  @keyframes countBump{
+    0%{transform:translateY(0) scale(1)}
+    32%{transform:translateY(-3px) scale(1.11)}
+    100%{transform:translateY(0) scale(1)}
+  }
   .proof-text :global(b){
     background:var(--app-grad-h);-webkit-background-clip:text;background-clip:text;
     color:transparent;font-weight:var(--fw-black);
@@ -362,5 +424,7 @@ const proof = f.socialProof;
   @media (prefers-reduced-motion:reduce){
     .sm-ring,.sm-tick{stroke-dashoffset:0;animation:none;}
     .spinner{animation:none;}
+    .live{animation:none;}
+    #wl-count:global(.bumped){animation:none;}
   }
 </style>
