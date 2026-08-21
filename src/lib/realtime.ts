@@ -23,6 +23,8 @@
  * ────────────────────────────────────────────────────────────────
  */
 
+import { supabaseKeyIsJwt } from './waitlist';
+
 const URL_ = import.meta.env.PUBLIC_SUPABASE_URL;
 const KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 
@@ -93,7 +95,11 @@ export function subscribeBroadcast(
               presence: { key: '' },
               private: false,
             },
-            access_token: KEY,
+            /* `access_token` is the slot for a user JWT. A legacy anon
+               key is one, so it goes here; a publishable key is not, and
+               sending it would be rejected — the apikey query param has
+               already authenticated the socket either way. */
+            ...(supabaseKeyIsJwt() ? { access_token: KEY } : {}),
           },
         }),
       );

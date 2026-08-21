@@ -232,16 +232,35 @@ const proof = f.socialProof;
       out.classList.add('bumped');
     };
 
-    let painted = false;
+    let painted = false;     // something is on screen
+    let haveReal = false;    // ...and it came from the server, not the fallback
+
     const render = (real: number | null, opts: { flash?: boolean } = {}) => {
-      // Demo mode (no Supabase env) falls back to the placeholder.
-      if (real === null) { box.hidden = false; animateTo(fallback); painted = true; return; }
+      if (real === null) {
+        /* No number available — the RPC is missing, the network blipped,
+           or there's no Supabase configured at all.
+
+           Once a real value is on screen we keep it. A counter that
+           rewinds to a placeholder because one poll failed is worse than
+           one that goes briefly stale, and it's what made a real signup
+           read as "0 students already waiting" a moment after joining. */
+        if (haveReal) return;
+
+        /* Nothing real has ever arrived. Showing "0 students already
+           waiting" under a signup form is an anti-pitch — it actively
+           argues against joining. Better to show no row at all. */
+        if (fallback > 0) { box.hidden = false; painted = true; animateTo(fallback); }
+        else { box.hidden = true; }
+        return;
+      }
+
       const target = real + offset;
       if (real < min) { box.hidden = true; return; }   // too few to be persuasive
       box.hidden = false;
-      if (painted && target === goal) return;          // nothing changed — don't re-animate
+      if (painted && target === goal) { haveReal = true; return; }  // unchanged — don't re-animate
       if (opts.flash && painted && target > goal) pulse();
       painted = true;
+      haveReal = true;
       animateTo(target);
     };
 
@@ -278,8 +297,10 @@ const proof = f.socialProof;
     // round trip. The broadcast that follows sets the authoritative
     // value, so an off-by-one here self-corrects within a second.
     document.addEventListener('waitlist:joined', () => {
-      box.hidden = false;
-      painted = true;
+      // Only nudge a counter that's already on screen. If the row is
+      // hidden — demo mode, or a real count still under `minToShow` —
+      // revealing it here would put up a number nothing has verified.
+      if (box.hidden) return;
       animateTo(goal + 1);
       pulse();
     });
