@@ -40,19 +40,24 @@ const proof = f.socialProof;
       </div>
 
       <!--
-        Honeypot. Bots fill every field they find; humans never see this
-        one, so anything in it means "not a person".
+        There is deliberately no honeypot field here any more.
 
-        The name is deliberately meaningless. It used to be `company`,
-        which browsers and password managers recognise as an organization
-        field and autofill unprompted — quietly marking real students as
-        bots and throwing their signups away. A honeypot has to be
-        invisible to well-meaning software too, not just to the user.
+        There was one, twice: first named `company`, then renamed to the
+        meaningless `hj_x`. Chrome autofilled BOTH — an off-screen text
+        input inside a form that also collects a name and an email gets
+        classified as part of an address form and filled regardless of
+        what it's called or how many ignore attributes it carries.
+
+        Every time that happened, a real student saw a green tick and was
+        silently thrown away. The trade was never worth it: a spam row
+        costs one junk record and one wasted email, while a false
+        positive costs a user who believes they signed up and never
+        hears from us again.
+
+        If spam ever becomes a real problem, add Cloudflare Turnstile —
+        it's invisible to users and doesn't guess. Do not reintroduce a
+        honeypot that silently discards.
       -->
-      <input type="text" name="hj_x" class="hp" tabindex="-1"
-             autocomplete="off" aria-hidden="true"
-             data-lpignore="true" data-1p-ignore data-form-type="other" />
-
       <button type="submit" class="btn btn-wipe">
         <span class="btn-label">{f.submit}</span>
         <span class="spinner" aria-hidden="true"></span>
@@ -183,21 +188,6 @@ const proof = f.socialProof;
       if (busy) return;   // Enter twice in quick succession
 
       const data = new FormData(form);
-
-      /* Honeypot tripped. Behave exactly as if it worked — telling a bot
-         it was caught just teaches the next version. But say so in the
-         console: if this ever fires on a real person, a silent discard
-         behind a green tick is the most expensive bug this page can
-         have, and it must not be invisible. */
-      if (String(data.get('hj_x') ?? '').length) {
-        console.warn(
-          '[waitlist] Honeypot field was filled, so this submission was discarded as a bot. ' +
-            'If that was a real person, something autofilled a hidden field — that is a bug.',
-        );
-        showCard(copy.successTitle, copy.successBody, null);
-        return;
-      }
-
       const who = String(data.get('name') ?? '').trim();
       const address = String(data.get('email') ?? '').trim();
 
@@ -399,10 +389,6 @@ const proof = f.socialProof;
   .form-row .btn{width:100%;}
   .field{position:relative;}
 
-  /* Off-screen rather than display:none — a hidden input is skipped by
-     some bots, which defeats the point. */
-  .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;}
-
   .field input,.field select{
     width:100%;padding:16px;background:var(--app-bg);
     border:1px solid var(--app-card-border);
@@ -492,6 +478,13 @@ const proof = f.socialProof;
     display:flex;align-items:center;justify-content:center;
     gap:var(--space-4);margin-top:var(--space-6);flex-wrap:wrap;
   }
+  /* REQUIRED, not belt-and-braces. The `hidden` attribute works by
+     applying `display:none` from the browser's default stylesheet, and
+     the author `display:flex` above silently outranks it. Without this
+     rule `element.hidden = true` has no visual effect whatsoever, and
+     the row sits there showing the placeholder 0 from the markup —
+     which is exactly the bug that made a working counter look broken. */
+  .proof[hidden]{display:none;}
   .avatars{display:flex;}
   .avatars span{
     /* The ring fakes a gap between overlapping avatars, so it has to be
