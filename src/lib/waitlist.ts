@@ -13,8 +13,30 @@
  * ────────────────────────────────────────────────────────────────
  */
 
-const URL_ = import.meta.env.PUBLIC_SUPABASE_URL;
+const RAW_URL = import.meta.env.PUBLIC_SUPABASE_URL;
 const KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+
+/**
+ * Everything here builds its own path onto the project origin, so the
+ * base must be just `https://<ref>.supabase.co`.
+ *
+ * The dashboard shows two URLs though, and the second one is a trap: a
+ * bare Project URL, and a "RESTful endpoint" that already ends in
+ * `/rest/v1`. Paste the endpoint and every request comes out doubled —
+ * `/rest/v1/rest/v1/rpc/waitlist_count` — which 404s and reads exactly
+ * like a missing database function. The websocket lands on
+ * `/rest/v1/realtime/v1/websocket` and fails auth for the same reason.
+ *
+ * Rather than make that a documentation problem, accept either form.
+ */
+const URL_ = String(RAW_URL ?? '')
+  .trim()
+  .replace(/\/+$/, '')            // trailing slashes
+  .replace(/\/rest\/v1$/, '')     // the RESTful-endpoint suffix
+  .replace(/\/+$/, '');
+
+/** The normalised project origin — the realtime client needs it too. */
+export const supabaseUrl = () => URL_;
 
 export const isConfigured = Boolean(URL_ && KEY);
 

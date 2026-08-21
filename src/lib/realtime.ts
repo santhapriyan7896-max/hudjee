@@ -23,9 +23,11 @@
  * ────────────────────────────────────────────────────────────────
  */
 
-import { supabaseKeyIsJwt } from './waitlist';
+import { supabaseKeyIsJwt, supabaseUrl } from './waitlist';
 
-const URL_ = import.meta.env.PUBLIC_SUPABASE_URL;
+/* Normalised there, not here — see the note in waitlist.ts on why the
+   dashboard's "RESTful endpoint" URL has to be tolerated. */
+const URL_ = supabaseUrl();
 const KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 
 export const realtimeAvailable = Boolean(URL_ && KEY && typeof WebSocket !== 'undefined');
