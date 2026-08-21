@@ -87,12 +87,22 @@ const proof = f.socialProof;
        data-offset={proof.offset} data-min={proof.minToShow}
        data-poll={proof.pollMs} data-realtime={proof.realtime ? '1' : '0'}
        data-suffix={proof.suffix} data-suffix-one={proof.suffixOne}>
-    <div class="avatars" aria-hidden="true">
-      <span class="a1">R</span><span class="a2">A</span><span class="a3">S</span><span class="a4">K</span>
-    </div>
     <p class="proof-text">
-      <span class="live" aria-hidden="true"></span>
-      <b id="wl-count">0</b> <span id="wl-suffix">{proof.suffix}</span>
+      <span class="count-wrap">
+        <b id="wl-count">0</b>
+        <!--
+          Hand-drawn underline. Two overlapping strokes rather than one:
+          a real marker doubles back, and a single clean curve reads as
+          a border, not a mark someone made. It redraws whenever the
+          number moves — that's the "this is live" signal, replacing the
+          pulsing green dot that every landing page on the internet has.
+        -->
+        <svg class="ink-underline" viewBox="0 0 120 14" preserveAspectRatio="none" aria-hidden="true">
+          <path class="ink-1" d="M4 9.4C21 5.6 40 10.4 58 7.6 76 4.9 98 9.1 116 6.4"/>
+          <path class="ink-2" d="M9 11.6C29 9.2 47 12.4 68 10.1 88 7.9 103 11.6 113 10.2"/>
+        </svg>
+      </span>
+      <span id="wl-suffix">{proof.suffix}</span>
     </p>
   </div>
 )}
@@ -270,9 +280,10 @@ const proof = f.socialProof;
     const many = box.dataset.suffix ?? '';
     const one  = box.dataset.suffixOne ?? many;
 
-    let shown = 0;        // what is painted this frame
-    let goal = 0;         // where it is heading
-    let live = false;     // a real server number has arrived at least once
+    let shown = 0;             // what is painted this frame
+    let goal = 0;              // where it is heading
+    let live = false;          // a real server number has arrived at least once
+    let lastCount = 0;         // the last total the server gave us
     let raf = 0;
 
     const paint = (n: number) => {
@@ -304,15 +315,30 @@ const proof = f.socialProof;
     };
 
     /** A live update that looks identical to a static number isn't
-        communicating anything, so the digit lifts when it moves. */
-    const pulse = () => {
+        communicating anything. The underline re-draws itself and the
+        digit lifts — motion that reads as someone marking a page,
+        rather than a status LED. */
+    const strokes = box.querySelectorAll<SVGPathElement>('.ink-underline path');
+
+    /** Re-draw the underline from scratch. */
+    const drawInk = () => {
+      if (reduce) return;
+      strokes.forEach((s) => s.classList.remove('drawing'));
+      void out.offsetWidth;                 // reflow, so the animation restarts
+      strokes.forEach((s) => s.classList.add('drawing'));
+    };
+
+    /** The number changed: lift the digit and re-ink the underline. */
+    const mark = () => {
       if (reduce) return;
       out.classList.remove('bumped');
-      void out.offsetWidth;                 // restart the animation
+      void out.offsetWidth;
       out.classList.add('bumped');
+      drawInk();
     };
 
     const apply = (count: number, flash = false) => {
+      lastCount = count;
       const target = count + offset;
 
       /* Below the threshold the row hides. At minToShow: 1 that means
@@ -322,9 +348,16 @@ const proof = f.socialProof;
 
       box.hidden = false;
       if (live && target === goal) return;  // unchanged, don't re-animate
-      if (flash && live && target > goal) pulse();
+      if (flash && live && target > goal) mark();
+
+      const first = !live;
       live = true;
       animateTo(target);
+
+      /* On the very first reveal the underline draws itself in as the
+         count-up settles, so the row arrives as one gesture rather than
+         a number that pops and a line that was already there. */
+      if (first) window.setTimeout(drawInk, 430);
     };
 
     const refresh = async (flash = false) => {
@@ -361,17 +394,28 @@ const proof = f.socialProof;
       window.addEventListener('pagehide', () => window.clearInterval(timer));
     }
 
-    /* Your own signup moves the number immediately instead of waiting
-       for the round trip. The broadcast that follows carries the
-       authoritative value, so any drift corrects within a second. */
-    document.addEventListener('waitlist:joined', () => {
-      if (box.hidden) {
-        // Was hidden under minToShow. Re-ask rather than guess.
-        refresh(true);
-        return;
-      }
-      animateTo(goal + 1);
-      pulse();
+    /* Your own signup just landed. Ask the server for the new total
+       rather than adding one locally.
+
+       Local arithmetic was a double-count waiting to happen, and it
+       happened: the database trigger broadcasts the new total the
+       instant the row inserts, so the broadcast often arrives BEFORE
+       this event does. The counter took the broadcast (+1), then this
+       handler added another 1 on top — the number went up by two and
+       only corrected on refresh.
+
+       The insert has already returned 201 by the time we get here, and
+       waitlist_count() is transactional, so the row is guaranteed to be
+       in that total. One extra round trip buys a number that cannot be
+       wrong. */
+    document.addEventListener('waitlist:joined', async () => {
+      const before = lastCount;
+      const r = await fetchWaitlistCount();
+      if (r.ok) { apply(r.count, true); return; }
+
+      /* Server unreachable this second. A local +1 is better than a
+         stale number, and the next broadcast or poll overwrites it. */
+      if (live) apply(before + 1, true);
     });
   })();
 </script>
@@ -485,33 +529,50 @@ const proof = f.socialProof;
      the row sits there showing the placeholder 0 from the markup —
      which is exactly the bug that made a working counter look broken. */
   .proof[hidden]{display:none;}
-  .avatars{display:flex;}
-  .avatars span{
-    /* The ring fakes a gap between overlapping avatars, so it has to be
-       the colour behind them — the page, now the card is unfilled. */
-    width:34px;height:34px;border-radius:var(--radius-circle);border:3px solid var(--app-bg);
-    margin-left:-11px;display:grid;place-items:center;
-    font-size:12px;font-weight:var(--fw-black);color:#0A0A0C;
-  }
-  .avatars span:first-child{margin-left:0;}
-  .a1{background:linear-gradient(135deg,#7B68E8,#A99BF2);}
-  .a2{background:linear-gradient(135deg,#C9A17C,#E0BE9B);}
-  .a3{background:linear-gradient(135deg,#A99BF2,#C9A17C);}
-  .a4{background:linear-gradient(135deg,#7B68E8,#C9A17C);}
-
   .proof-text{
-    font-size:14px;color:var(--app-text-2);font-weight:var(--fw-bold);
-    display:inline-flex;align-items:center;gap:7px;
+    font-size:15px;color:var(--app-text-2);font-weight:var(--fw-bold);
+    display:inline-flex;align-items:baseline;gap:9px;
   }
-  /* Live dot — signals the number is real, not decoration. */
-  .live{
-    width:7px;height:7px;border-radius:50%;background:var(--app-success);
-    box-shadow:0 0 0 0 rgba(74,222,128,.5);animation:livePulse 2.4s infinite;flex-shrink:0;
+
+  /* ── The ink underline ──────────────────────────────────────────
+     Replaces the stacked avatars and the pulsing green dot. Both were
+     stock social-proof decoration: invented faces and a status LED
+     that every landing page on the internet already has.
+
+     This is drawn instead of lit. Two overlapping strokes, because a
+     real marker doubles back and a single clean curve reads as a
+     border rather than a mark someone made. It re-draws whenever the
+     count moves, which is the same signal the dot was reaching for —
+     but earned by the motion instead of asserted by a colour. */
+  .count-wrap{position:relative;display:inline-block;}
+  /* Centred with a minimum length, not pinned to the number's edges.
+     The SVG stretches horizontally, so on a single digit a full-width
+     rule would compress the wobble into a smudge. A floor of 54px keeps
+     the stroke legible and lets it overshoot the digit slightly — which
+     is what a real underline drawn by hand does anyway. */
+  .ink-underline{
+    position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);
+    width:calc(100% + 12px);min-width:54px;height:11px;
+    overflow:visible;pointer-events:none;
   }
-  @keyframes livePulse{
-    0%{box-shadow:0 0 0 0 rgba(74,222,128,.5)}
-    70%{box-shadow:0 0 0 7px rgba(74,222,128,0)}
-    100%{box-shadow:0 0 0 0 rgba(74,222,128,0)}
+  .ink-underline path{
+    fill:none;
+    stroke:var(--app-amber,#C9A17C);
+    stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;
+    /* Keeps the stroke an even weight even though the SVG is stretched
+       horizontally to whatever width the number happens to be. */
+    vector-effect:non-scaling-stroke;
+    stroke-dasharray:170;stroke-dashoffset:0;
+  }
+  /* The second pass is lighter and slightly offset — the overlap is
+     what stops it looking like a border. */
+  .ink-underline .ink-2{stroke-width:1.5;opacity:.45;}
+
+  .ink-underline path.drawing{animation:inkDraw .58s cubic-bezier(.62,.03,.31,1) both;}
+  .ink-underline .ink-2.drawing{animation-duration:.72s;animation-delay:.07s;}
+  @keyframes inkDraw{
+    from{stroke-dashoffset:170}
+    to{stroke-dashoffset:0}
   }
 
   /* tabular-nums so the row doesn't reflow as digits change under it. */
@@ -539,8 +600,12 @@ const proof = f.socialProof;
   }
   @media (prefers-reduced-motion:reduce){
     .sm-ring,.sm-tick{stroke-dashoffset:0;animation:none;}
-    .spinner,.live{animation:none;}
+    .spinner{animation:none;}
     #wl-count:global(.bumped){animation:none;}
     .sent-card{animation:none;}
+    /* The underline still shows — it just arrives already drawn. */
+    .ink-underline path,.ink-underline path:global(.drawing){
+      animation:none;stroke-dashoffset:0;
+    }
   }
 </style>
