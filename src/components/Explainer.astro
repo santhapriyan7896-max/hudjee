@@ -62,9 +62,10 @@ const brace = `<svg viewBox="0 0 18 100" preserveAspectRatio="none" fill="none" 
 </section>
 
 <style>
-  /* Full height and vertically centred, because the section gets pinned
-     while the phrases perform — a short section would leave the reel
-     stranded at the top of a held screen. */
+  /* Full height and vertically centred. This used to be load-bearing —
+     the section was pinned while the phrases performed. Nothing pins any
+     more, so it is now purely a breathing-room choice: drop the
+     min-height if the empty space above and below reads as too much. */
   #why{
     --why-ink:#F4EFE2;
     position:relative;z-index:2;padding:0 4vw;

@@ -387,23 +387,33 @@ function initTools() {
   });
 }
 
-/* ── Explainer — four phrases take turns performing ──────────────────────
+/* ── Explainer — the four phrases perform together, once ─────────────────
  *
- *  When the section reaches the top of the screen the page is held still
- *  for WHY_LOCK_S seconds while each marked phrase goes green, does one
- *  trick, and settles back to cream. Then scrolling is handed back.
+ *  All four marked phrases go green, do their trick and settle back to
+ *  cream in one pass, kicked off when the paragraph scrolls into view.
  *
- *  The reel is time-scaled to fit the lock exactly, so the hold and the
- *  animation can never drift apart — WHY_LOCK_S is the one number that
- *  controls the pace of the whole thing. Raise it and every phrase slows
- *  proportionally; lower it and they all sharpen up.
+ *  This used to work very differently: the section snapped to the top of
+ *  the screen and then SWALLOWED wheel, touch and keyboard events for 4.5
+ *  seconds while the phrases took turns. Taking someone's scroll away is
+ *  about the most hostile thing a page can do — a reader skimming past
+ *  got trapped, and on a slow frame they were stuck staring at a
+ *  paragraph they had already read. The animation is decoration; it was
+ *  never worth the cost of holding the page hostage to show it.
  *
- *  Which phrase does what is set in data/site.ts; this plays them in
- *  document order, one after another.
+ *  Now nothing is blocked and nothing is pinned. The phrases start
+ *  fractionally apart — enough to read as choreography rather than a
+ *  simultaneous flash — and the whole thing is done in WHY_RUN_S.
+ *
+ *  The reel is time-scaled to that number, so WHY_RUN_S alone controls
+ *  the pace no matter how the choreography below is edited. Which phrase
+ *  does what is set in data/site.ts.
  * ─────────────────────────────────────────────────────────────────────── */
 const WHY_GREEN = '#0AE448';
 const WHY_INK = '#F4EFE2';
-const WHY_LOCK_S = 4.5;
+/** Total run time of the whole reel, in seconds. The one dial. */
+const WHY_RUN_S = 1.25;
+/** Head start between one phrase and the next, before time-scaling. */
+const WHY_STAGGER = 0.09;
 
 function initExplainer() {
   const sec = document.querySelector<HTMLElement>('#why');
@@ -434,62 +444,62 @@ function initExplainer() {
      snap. Where a phrase needs a bit of overshoot it says so locally. */
   const tl = gsap.timeline({ paused: true, defaults: { ease: 'sine.inOut' } });
 
-  /* A beat of stillness at each end, so the paragraph is settled and
-     readable before the first phrase moves and after the last one lands. */
-  tl.to({}, { duration: 0.15 });
-
-  for (const seg of segs) {
+  /* Each phrase is built as its own small timeline, then dropped onto the
+     master a fraction after the one before it. Building them separately is
+     what lets them overlap: the relative positions inside a phrase ('<',
+     '>-0.1') stay relative to that phrase alone, instead of chaining onto
+     whatever happened to be added last. */
+  segs.forEach((seg, i) => {
     const chars = charsFor.get(seg) ?? [];
-    const gap = '+=0.18'; // a breath between one phrase and the next
+    const p = gsap.timeline({ defaults: { ease: 'sine.inOut' } });
 
     switch (seg.dataset.demo) {
       /* A flourish is drawn on over the phrase, with the burst riding
          the stroke as it goes. */
       case 'draw': {
-        tl.to(chars, { color: WHY_GREEN, duration: 0.18, stagger: 0.012 }, gap);
+        p.to(chars, { color: WHY_GREEN, duration: 0.18, stagger: 0.012 }, 0);
 
         if (flourish) {
-          const at = '<'; // start alongside the colour sweep
-          tl.set(flourish, { opacity: 1 }, at)
-            .fromTo('#why-curl', { drawSVG: '0% 0%' }, { drawSVG: '0% 100%', duration: 0.5, ease: 'power1.inOut' }, at)
+          p.set(flourish, { opacity: 1 }, 0)
+            .fromTo('#why-curl', { drawSVG: '0% 0%' }, { drawSVG: '0% 100%', duration: 0.5, ease: 'power1.inOut' }, 0)
             .fromTo('#why-spark',
               { scale: 0, opacity: 0, transformOrigin: '50% 50%' },
               {
                 scale: 1, opacity: 1, duration: 0.5, ease: 'power1.inOut',
                 motionPath: { path: '#why-curl', align: '#why-curl', alignOrigin: [0.5, 0.5] },
-              }, at)
+              }, 0)
             .from('.mote', { scale: 0, opacity: 0, duration: 0.24, stagger: 0.04, ease: 'back.out(1.8)' }, '>-0.16')
             /* Erase from the tail so it reads as being pulled away. */
-            .to('#why-curl', { drawSVG: '100% 100%', duration: 0.3, ease: 'power1.in' }, '+=0.1')
+            .to('#why-curl', { drawSVG: '100% 100%', duration: 0.3, ease: 'power1.in' }, '+=0.05')
             .to(['#why-spark', '.mote'], { scale: 0, opacity: 0, duration: 0.2, stagger: 0.03 }, '<')
             .set(flourish, { opacity: 0 });
         }
 
-        tl.to(chars, { color: WHY_INK, duration: 0.22, stagger: 0.01 }, '>-0.14');
+        p.to(chars, { color: WHY_INK, duration: 0.22, stagger: 0.01 }, '>-0.14');
         break;
       }
 
       /* Characters light up left to right and nudge up as they go. */
       case 'pop':
-        tl.to(chars, { color: WHY_GREEN, y: -8, duration: 0.18, stagger: 0.028, ease: 'back.out(1.5)' }, gap)
+        p.to(chars, { color: WHY_GREEN, y: -8, duration: 0.18, stagger: 0.028, ease: 'back.out(1.5)' }, 0)
           .to(chars, { color: WHY_INK, y: 0, duration: 0.22, stagger: 0.018 }, '>-0.1');
         break;
 
       /* Junk glyphs cycle through and resolve into the real text. */
       case 'scramble': {
         const text = seg.textContent || '';
-        tl.to(seg, { color: WHY_GREEN, duration: 0.14 }, gap)
+        p.to(seg, { color: WHY_GREEN, duration: 0.14 }, 0)
           .to(seg, {
             duration: 0.6,
             scrambleText: { text, chars: 'upperAndLowerCase', speed: 0.8, revealDelay: 0.16 },
-          }, '<')
+          }, 0)
           .to(seg, { color: WHY_INK, duration: 0.25 }, '>-0.1');
         break;
       }
 
       /* Characters burst outward with scale and random rotation, then slam back. */
       case 'scatter':
-        tl.to(chars, { color: WHY_GREEN, duration: 0.14 }, gap)
+        p.to(chars, { color: WHY_GREEN, duration: 0.14 }, 0)
           .to(chars, {
             scale: 2.5,
             rotationZ: () => rand(-15, 15),
@@ -497,7 +507,7 @@ function initExplainer() {
             duration: 0.25,
             stagger: { each: 0.04, from: 'center' },
             ease: 'back.out(2)'
-          }, '<')
+          }, 0)
           .to(chars, {
             scale: 1,
             rotationZ: 0,
@@ -509,63 +519,28 @@ function initExplainer() {
           }, '>-0.1');
         break;
     }
-  }
 
-  tl.to({}, { duration: 0.15 });
+    tl.add(p, i * WHY_STAGGER);
+  });
 
-  /* Squeeze (or stretch) the whole reel into the lock window, so the hold
-     and the animation finish together no matter how the choreography above
-     is edited. */
-  tl.timeScale(tl.duration() / WHY_LOCK_S);
+  /* Squeeze (or stretch) the whole reel into WHY_RUN_S, so that constant
+     stays the single dial no matter how the choreography above is edited. */
+  tl.timeScale(tl.duration() / WHY_RUN_S);
 
+  /* Fires while the paragraph is still coming up the screen, so the
+     performance is under way by the time it is comfortably in view — and
+     nothing snaps, pins or blocks. Someone scrolling straight past just
+     scrolls straight past. */
   ScrollTrigger.create({
     trigger: sec,
-    start: 'top top',
+    start: 'top 68%',
     once: true,
     onRefresh: () => flourish && placeFlourish(body, flourish, drawSeg),
     onEnter: () => {
-      /* Snap to the section's top first — someone arriving on a fast flick
-         would otherwise be held at whatever half-framed spot they landed. */
-      const y = sec.getBoundingClientRect().top + window.scrollY;
-      window.scrollTo(0, y);
       if (flourish) placeFlourish(body, flourish, drawSeg);
-      holdScroll(y, WHY_LOCK_S * 1000);
       tl.play(0);
     },
   });
-}
-
-/** Hold the page at `y` for `ms`, then give scrolling back.
- *
- *  Wheel, touch and the scrolling keys are swallowed; anything that slips
- *  through (scrollbar drags, momentum already in flight) is snapped back by
- *  the scroll listener. Escape is an escape hatch — a lock with no way out
- *  is the kind of thing that traps someone on a flaky frame. */
-function holdScroll(y: number, ms: number) {
-  const eat = (e: Event) => e.preventDefault();
-  const KEYS = new Set([' ', 'PageDown', 'PageUp', 'Home', 'End', 'ArrowDown', 'ArrowUp']);
-  const eatKey = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') return release();
-    if (KEYS.has(e.key)) e.preventDefault();
-  };
-  const snap = () => window.scrollTo(0, y);
-  const opts = { passive: false } as AddEventListenerOptions;
-
-  let done = false;
-  function release() {
-    if (done) return;
-    done = true;
-    window.removeEventListener('wheel', eat, opts);
-    window.removeEventListener('touchmove', eat, opts);
-    window.removeEventListener('keydown', eatKey, opts);
-    window.removeEventListener('scroll', snap);
-  }
-
-  window.addEventListener('wheel', eat, opts);
-  window.addEventListener('touchmove', eat, opts);
-  window.addEventListener('keydown', eatKey, opts);
-  window.addEventListener('scroll', snap);
-  setTimeout(release, ms);
 }
 
 /** Park the flourish over the demo phrase's first line box, so it lands in
