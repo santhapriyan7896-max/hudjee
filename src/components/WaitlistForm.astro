@@ -1,4 +1,11 @@
 ---
+/**
+ * Waitlist form + live signup counter.
+ *
+ * Two independent controllers in the script below, talking to each
+ * other through one custom event. The form owns submission; the
+ * counter owns the number. Neither reaches into the other's state.
+ */
 import { waitlistForm as f } from '../data/site';
 const proof = f.socialProof;
 ---
@@ -8,8 +15,10 @@ const proof = f.socialProof;
       <div class="field f-name">
         <label class="visually-hidden" for="wl-name">Your name</label>
         <input id="wl-name" type="text" name="name" placeholder={f.namePlaceholder}
-               autocomplete="given-name" required enterkeyhint="next" />
+               autocomplete="given-name" required enterkeyhint="next"
+               maxlength="80" />
       </div>
+
       <div class="field batch">
         <label class="visually-hidden" for="wl-batch">{f.batchLabel}</label>
         <select id="wl-batch" name="batch">
@@ -17,24 +26,39 @@ const proof = f.socialProof;
           {f.batches.map((b) => <option value={b.value}>{b.label}</option>)}
         </select>
       </div>
+
       <div class="field f-email">
         <label class="visually-hidden" for="wl-email">Email address</label>
         <input id="wl-email" type="email" name="email" placeholder={f.emailPlaceholder}
                autocomplete="email" required enterkeyhint="go"
-               aria-describedby="wl-msg" />
+               maxlength="254" aria-describedby="wl-msg" />
         <span class="tick" aria-hidden="true">
           <svg viewBox="0 0 20 20" width="15" height="15"><path d="M4 10.5l4 4 8-9"
             fill="none" stroke="currentColor" stroke-width="2.4"
             stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
       </div>
-      <!-- Honeypot: bots fill it, humans never see it. -->
-      <input type="text" name="company" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
+      <!--
+        Honeypot. Bots fill every field they find; humans never see this
+        one, so anything in it means "not a person".
+
+        The name is deliberately meaningless. It used to be `company`,
+        which browsers and password managers recognise as an organization
+        field and autofill unprompted — quietly marking real students as
+        bots and throwing their signups away. A honeypot has to be
+        invisible to well-meaning software too, not just to the user.
+      -->
+      <input type="text" name="hj_x" class="hp" tabindex="-1"
+             autocomplete="off" aria-hidden="true"
+             data-lpignore="true" data-1p-ignore data-form-type="other" />
+
       <button type="submit" class="btn btn-wipe">
         <span class="btn-label">{f.submit}</span>
         <span class="spinner" aria-hidden="true"></span>
       </button>
     </div>
+
     <p class="form-msg" id="wl-msg" role="status" aria-live="polite"></p>
     <p class="form-note">{f.note}</p>
   </form>
@@ -47,17 +71,16 @@ const proof = f.socialProof;
               stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </div>
-    <h3>{f.successTitle}</h3>
+    <h3 id="wl-sent-title">{f.successTitle}</h3>
     <p class="sent-pos" id="wl-position" hidden></p>
-    <p>{f.successBody}</p>
+    <p id="wl-sent-body">{f.successBody}</p>
   </div>
 </div>
 
 {proof && (
   <div class="proof" id="proof" hidden
        data-offset={proof.offset} data-min={proof.minToShow}
-       data-fallback={proof.fallbackCount} data-poll={proof.pollMs}
-       data-realtime={proof.realtime ? '1' : '0'}
+       data-poll={proof.pollMs} data-realtime={proof.realtime ? '1' : '0'}
        data-suffix={proof.suffix} data-suffix-one={proof.suffixOne}>
     <div class="avatars" aria-hidden="true">
       <span class="a1">R</span><span class="a2">A</span><span class="a3">S</span><span class="a4">K</span>
@@ -70,237 +93,293 @@ const proof = f.socialProof;
 )}
 
 <script>
-  import { submitWaitlist, isValidEmail, fetchWaitlistCount } from '../lib/waitlist';
+  import { submitWaitlist, fetchWaitlistCount, isValidEmail } from '../lib/waitlist';
   import { subscribeBroadcast, realtimeAvailable } from '../lib/realtime';
   import { waitlistForm as copy } from '../data/site';
 
-  document.querySelectorAll<HTMLFormElement>('form.wl').forEach((form) => {
-    const msg = form.querySelector<HTMLElement>('.form-msg')!;
-    const btn = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
-    const email = form.querySelector<HTMLInputElement>('input[type=email]')!;
-    const name = form.querySelector<HTMLInputElement>('input[name=name]')!;
-    const field = email.closest('.field')!;
-    const label = btn.querySelector<HTMLElement>('.btn-label')!;
-    const original = label.textContent ?? '';
-    let touched = false;
+  /* ════════════════════════════════════════════════════════════════
+     1. The form
+     ════════════════════════════════════════════════════════════════ */
 
-    const setError = (text: string) => {
+  document.querySelectorAll<HTMLFormElement>('form.wl').forEach((form) => {
+    const card     = form.nextElementSibling as HTMLElement | null;
+    const msg      = form.querySelector<HTMLElement>('.form-msg')!;
+    const btn      = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
+    const label    = btn.querySelector<HTMLElement>('.btn-label')!;
+    const nameEl   = form.querySelector<HTMLInputElement>('input[name=name]')!;
+    const emailEl  = form.querySelector<HTMLInputElement>('input[type=email]')!;
+    const emailBox = emailEl.closest('.field')!;
+
+    const idleLabel = label.textContent ?? '';
+    let touched = false;   // has the email field been blurred once?
+    let busy = false;      // a request is in flight
+
+    /* ── Messages ───────────────────────────────────────────────── */
+
+    const showError = (text: string) => {
       msg.className = 'form-msg err';
       msg.textContent = text;
-      email.setAttribute('aria-invalid', 'true');
-      field.classList.remove('valid');
-      field.classList.add('invalid');
+      emailEl.setAttribute('aria-invalid', 'true');
+      emailBox.classList.remove('valid');
+      emailBox.classList.add('invalid');
     };
+
     const clearError = () => {
       msg.className = 'form-msg';
       msg.textContent = '';
-      email.removeAttribute('aria-invalid');
-      field.classList.remove('invalid');
+      emailEl.removeAttribute('aria-invalid');
+      emailBox.classList.remove('invalid');
     };
 
-    /* Validate live, but only after the first blur — nagging someone
-       mid-way through typing their address is obnoxious. */
-    email.addEventListener('blur', () => {
+    /** Swap the form out for the confirmation card. */
+    const showCard = (title: string, body: string, position: number | null) => {
+      const t = document.getElementById('wl-sent-title');
+      const b = document.getElementById('wl-sent-body');
+      const p = document.getElementById('wl-position');
+      if (t) t.textContent = title;
+      if (b) b.textContent = body;
+      if (p) {
+        if (position) {
+          p.textContent = `${copy.positionPrefix}${position.toLocaleString('en-IN')} ${copy.positionSuffix}`;
+          p.hidden = false;
+        } else {
+          p.hidden = true;
+        }
+      }
+      form.classList.add('sent');
+      // Move focus so screen readers announce the confirmation.
+      const h = card?.querySelector('h3') as HTMLElement | null;
+      h?.setAttribute('tabindex', '-1');
+      h?.focus();
+    };
+
+    /* ── Live validation ────────────────────────────────────────────
+       Only after the first blur. Nagging someone halfway through
+       typing their address is obnoxious, and it trains people to
+       ignore the message that actually matters. */
+
+    emailEl.addEventListener('blur', () => {
       touched = true;
-      const v = email.value.trim();
-      if (!v) { clearError(); field.classList.remove('valid'); return; }
-      if (isValidEmail(v)) { clearError(); field.classList.add('valid'); }
-      else setError(copy.errorInvalid);
+      const v = emailEl.value.trim();
+      if (!v) { clearError(); emailBox.classList.remove('valid'); return; }
+      if (isValidEmail(v)) { clearError(); emailBox.classList.add('valid'); }
+      else showError(copy.errorInvalid);
     });
-    email.addEventListener('input', () => {
+
+    emailEl.addEventListener('input', () => {
       if (!touched) return;
-      const v = email.value.trim();
-      if (isValidEmail(v)) { clearError(); field.classList.add('valid'); }
-      else field.classList.remove('valid');
+      if (isValidEmail(emailEl.value.trim())) {
+        clearError();
+        emailBox.classList.add('valid');
+      } else {
+        emailBox.classList.remove('valid');
+      }
     });
+
+    /* ── Submit ─────────────────────────────────────────────────── */
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (busy) return;   // Enter twice in quick succession
+
       const data = new FormData(form);
-      // Honeypot tripped — pretend it worked, write nothing.
-      if ((data.get('company') as string)?.length) { form.classList.add('sent'); return; }
+
+      /* Honeypot tripped. Behave exactly as if it worked — telling a bot
+         it was caught just teaches the next version. But say so in the
+         console: if this ever fires on a real person, a silent discard
+         behind a green tick is the most expensive bug this page can
+         have, and it must not be invisible. */
+      if (String(data.get('hj_x') ?? '').length) {
+        console.warn(
+          '[waitlist] Honeypot field was filled, so this submission was discarded as a bot. ' +
+            'If that was a real person, something autofilled a hidden field — that is a bug.',
+        );
+        showCard(copy.successTitle, copy.successBody, null);
+        return;
+      }
 
       const who = String(data.get('name') ?? '').trim();
-      const value = String(data.get('email') ?? '').trim();
+      const address = String(data.get('email') ?? '').trim();
+
       touched = true;
-      if (!who) { setError(copy.errorNameEmpty); name.focus(); return; }
-      if (!value) { setError(copy.errorEmpty); email.focus(); return; }
-      if (!isValidEmail(value)) { setError(copy.errorInvalid); email.focus(); return; }
+      if (!who)                  { showError(copy.errorNameEmpty); nameEl.focus();  return; }
+      if (!address)              { showError(copy.errorEmpty);     emailEl.focus(); return; }
+      if (!isValidEmail(address)) { showError(copy.errorInvalid);   emailEl.focus(); return; }
 
       clearError();
+      busy = true;
       btn.disabled = true;
       form.classList.add('busy');
       label.textContent = copy.submitting;
 
       const res = await submitWaitlist({
         name: who,
-        email: value,
+        email: address,
         batch: (data.get('batch') as string) || null,
         source: 'landing',
       });
 
+      busy = false;
       btn.disabled = false;
       form.classList.remove('busy');
-      label.textContent = original;
+      label.textContent = idleLabel;
 
-      if (res.ok) {
-        form.classList.add('sent');
+      switch (res.status) {
+        case 'joined':
+          showCard(copy.successTitle, copy.successBody, res.position);
+          // Tell the counter. Only a genuinely new row fires this.
+          document.dispatchEvent(new CustomEvent('waitlist:joined'));
+          break;
 
-        const pos = document.getElementById('wl-position');
-        if (pos && res.position) {
-          pos.textContent = `${copy.positionPrefix}${res.position.toLocaleString('en-IN')} ${copy.positionSuffix}`;
-          pos.hidden = false;
-        }
-        document.dispatchEvent(new CustomEvent('waitlist:joined'));
-        // Move focus to the confirmation so screen readers announce it.
-        form.nextElementSibling?.querySelector('h3')?.setAttribute('tabindex', '-1');
-        (form.nextElementSibling?.querySelector('h3') as HTMLElement | null)?.focus();
-      } else {
-        setError(res.reason === 'duplicate' ? copy.errorDuplicate : copy.errorGeneric);
-        email.focus();
+        /* Already on the list is not a failure — they did the right
+           thing, they just did it twice. A red error for that reads
+           as rejection. Same card, honest wording, no position. */
+        case 'duplicate':
+          showCard(copy.duplicateTitle, copy.duplicateBody, null);
+          break;
+
+        case 'offline':
+          showError(copy.errorOffline);
+          emailEl.focus();
+          break;
+
+        /* Their form is fine; our backend isn't. Say so plainly rather
+           than implying they typed something wrong — the console
+           already carries the technical detail for us. */
+        case 'unconfigured':
+        case 'rejected':
+          showError(copy.errorGeneric);
+          break;
       }
     });
   });
 
-  /* ────────────────────────────────────────────────────────────────
-     Live signup counter.
+  /* ════════════════════════════════════════════════════════════════
+     2. The live counter
 
      Push, not poll. A database trigger broadcasts the new total on
-     every insert (supabase/waitlist.sql), and this listens on a
-     public Realtime channel — so the number moves the instant anyone,
-     anywhere, joins. The websocket is hand-rolled in lib/realtime.ts
-     rather than pulled from @supabase/supabase-js, which would be
-     ~35 KB of client to watch one integer.
+     every insert (supabase/waitlist.sql) and this listens on a public
+     Realtime channel, so the number moves the instant anyone joins.
 
-     Polling stays on as a slow backstop (`pollMs` in site.ts) for the
-     cases push can't cover: a socket that never connects behind a
-     corporate proxy, a mobile browser that killed it in the
-     background, or a row inserted straight from the dashboard.
-     ──────────────────────────────────────────────────────────────── */
+     A slow poll stays on as a backstop for what push can't cover: a
+     socket blocked by a proxy, a mobile browser that killed it in the
+     background, or a row added straight from the dashboard.
+     ════════════════════════════════════════════════════════════════ */
+
   (() => {
     const box = document.getElementById('proof');
     const out = document.getElementById('wl-count');
     if (!box || !out) return;
 
-    const offset   = Number(box.dataset.offset ?? 0);
-    const min      = Number(box.dataset.min ?? 0);
-    const fallback = Number(box.dataset.fallback ?? 0);
-    const pollMs   = Number(box.dataset.poll ?? 0);
-    const reduce   = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const offset = Number(box.dataset.offset ?? 0);
+    const min    = Number(box.dataset.min ?? 0);
+    const pollMs = Number(box.dataset.poll ?? 0);
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const suffixEl = document.getElementById('wl-suffix');
     const many = box.dataset.suffix ?? '';
-    const one = box.dataset.suffixOne ?? many;
-    const setSuffix = (n: number) => {
+    const one  = box.dataset.suffixOne ?? many;
+
+    let shown = 0;        // what is painted this frame
+    let goal = 0;         // where it is heading
+    let live = false;     // a real server number has arrived at least once
+    let raf = 0;
+
+    const paint = (n: number) => {
+      out.textContent = n.toLocaleString('en-IN');
       if (suffixEl) suffixEl.textContent = n === 1 ? one : many;
     };
-
-    let shown = 0;   // what's on screen this frame
-    let goal = 0;    // where it's heading — what the server last told us
-    let raf = 0;
 
     /** Roll the number rather than snapping it. */
     const animateTo = (target: number) => {
       goal = target;
-      if (reduce) { shown = target; out.textContent = target.toLocaleString('en-IN'); setSuffix(target); return; }
+      if (reduce) { shown = target; paint(target); return; }
+
       cancelAnimationFrame(raf);
-      // Start from what's currently painted, not from the last settled
-      // value — an update mid-roll must continue, never jump back.
+      // Start from what's painted right now, not from the last settled
+      // value — an update mid-roll must continue, never jump backwards.
       const from = shown;
-      // First paint counts up from zero; later updates tick quickly.
-      const dur = from === 0 ? 900 : 420;
+      const dur = from === 0 ? 900 : 420;   // first paint counts up; later ticks are quick
       let t0 = 0;
+
       const step = (ts: number) => {
         if (!t0) t0 = ts;
         const p = Math.min((ts - t0) / dur, 1);
-        const v = Math.round(from + (target - from) * (1 - Math.pow(1 - p, 3)));
-        shown = v;
-        out.textContent = v.toLocaleString('en-IN');
-        setSuffix(v);
+        shown = Math.round(from + (target - from) * (1 - Math.pow(1 - p, 3)));
+        paint(shown);
         if (p < 1) raf = requestAnimationFrame(step);
         else shown = target;
       };
       raf = requestAnimationFrame(step);
     };
 
-    /** Brief flash when the number moves on its own — otherwise a live
-        update is indistinguishable from a static number. */
+    /** A live update that looks identical to a static number isn't
+        communicating anything, so the digit lifts when it moves. */
     const pulse = () => {
       if (reduce) return;
       out.classList.remove('bumped');
-      void out.offsetWidth;            // restart the animation
+      void out.offsetWidth;                 // restart the animation
       out.classList.add('bumped');
     };
 
-    let painted = false;     // something is on screen
-    let haveReal = false;    // ...and it came from the server, not the fallback
+    const apply = (count: number, flash = false) => {
+      const target = count + offset;
 
-    const render = (real: number | null, opts: { flash?: boolean } = {}) => {
-      if (real === null) {
-        /* No number available — the RPC is missing, the network blipped,
-           or there's no Supabase configured at all.
+      /* Below the threshold the row hides. At minToShow: 1 that means
+         "0 students already waiting" — an anti-pitch that argues
+         against joining — is never rendered. */
+      if (count < min) { box.hidden = true; live = true; return; }
 
-           Once a real value is on screen we keep it. A counter that
-           rewinds to a placeholder because one poll failed is worse than
-           one that goes briefly stale, and it's what made a real signup
-           read as "0 students already waiting" a moment after joining. */
-        if (haveReal) return;
-
-        /* Nothing real has ever arrived. Showing "0 students already
-           waiting" under a signup form is an anti-pitch — it actively
-           argues against joining. Better to show no row at all. */
-        if (fallback > 0) { box.hidden = false; painted = true; animateTo(fallback); }
-        else { box.hidden = true; }
-        return;
-      }
-
-      const target = real + offset;
-      if (real < min) { box.hidden = true; return; }   // too few to be persuasive
       box.hidden = false;
-      if (painted && target === goal) { haveReal = true; return; }  // unchanged — don't re-animate
-      if (opts.flash && painted && target > goal) pulse();
-      painted = true;
-      haveReal = true;
+      if (live && target === goal) return;  // unchanged, don't re-animate
+      if (flash && live && target > goal) pulse();
+      live = true;
       animateTo(target);
     };
 
-    const tick = async (flash = false) => render(await fetchWaitlistCount(), { flash });
+    const refresh = async (flash = false) => {
+      const r = await fetchWaitlistCount();
+      if (r.ok) { apply(r.count, flash); return; }
 
-    tick();
+      /* No number this time. If one has ever arrived we keep it: a
+         counter that rewinds to zero because a single poll failed is
+         far worse than one that goes briefly stale. If none ever has,
+         the row stays hidden rather than showing an invented figure. */
+      if (!live) box.hidden = true;
+    };
 
-    /* ── Push ──────────────────────────────────────────────────────
-       The trigger sends { count: <new total> } on the `waitlist`
-       topic. On (re)connect we re-fetch once, because anything that
-       happened while the socket was down was never delivered. */
-    if (box.dataset.realtime === '1' && realtimeAvailable) {
+    refresh();
+
+    // Push. On every (re)connect, resync — anything broadcast while the
+    // socket was down was never queued for us.
+    if (box.dataset.realtime === '1' && realtimeAvailable()) {
       subscribeBroadcast(
         'waitlist',
         'signup',
         (payload) => {
           const n = Number((payload as { count?: unknown }).count);
-          if (Number.isFinite(n)) render(n, { flash: true });
+          if (Number.isFinite(n)) apply(n, true);
         },
-        { onOpen: () => { if (painted) tick(true); } },
+        { onOpen: () => { if (live) refresh(true); } },
       );
     }
 
-    /* ── Backstop poll ─────────────────────────────────────────────
-       Slow on purpose: push does the real work. This only catches
-       what push missed. Pauses while the tab is hidden. */
+    // Backstop poll. Deliberately slow; push does the real work.
     if (pollMs > 0) {
-      const timer = window.setInterval(() => { if (!document.hidden) tick(true); }, pollMs);
-      document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(true); });
+      const timer = window.setInterval(() => { if (!document.hidden) refresh(true); }, pollMs);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(true); });
       window.addEventListener('pagehide', () => window.clearInterval(timer));
     }
 
-    // Own signup bumps the number immediately, without waiting for the
-    // round trip. The broadcast that follows sets the authoritative
-    // value, so an off-by-one here self-corrects within a second.
+    /* Your own signup moves the number immediately instead of waiting
+       for the round trip. The broadcast that follows carries the
+       authoritative value, so any drift corrects within a second. */
     document.addEventListener('waitlist:joined', () => {
-      // Only nudge a counter that's already on screen. If the row is
-      // hidden — demo mode, or a real count still under `minToShow` —
-      // revealing it here would put up a number nothing has verified.
-      if (box.hidden) return;
+      if (box.hidden) {
+        // Was hidden under minToShow. Re-ask rather than guess.
+        refresh(true);
+        return;
+      }
       animateTo(goal + 1);
       pulse();
     });
@@ -309,15 +388,19 @@ const proof = f.socialProof;
 
 <style>
   .waitlist{max-width:520px;margin:0 auto;}
-  /* Explicit grid: email + batch share row 1, the CTA spans row 2 at
-     full width. Flex-wrap was letting the button drop onto its own
-     line at content width, which read as an afterthought. */
+
+  /* Explicit grid: name + batch share row 1, email and the CTA each
+     span the full width below. Flex-wrap used to let the button drop
+     onto its own line at content width, which read as an afterthought. */
   .form-row{display:grid;grid-template-columns:1fr 150px;gap:10px;}
   .f-name{grid-column:1;}
   .batch{grid-column:2;}
   .f-email,.form-row .btn{grid-column:1 / -1;}
   .form-row .btn{width:100%;}
   .field{position:relative;}
+
+  /* Off-screen rather than display:none — a hidden input is skipped by
+     some bots, which defeats the point. */
   .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;}
 
   .field input,.field select{
@@ -349,13 +432,10 @@ const proof = f.socialProof;
   }
   .field select option{background:#141318;color:#fff;}
 
-  /* Button spinner while the request is in flight. */
   /* Sizing only — fill, outline and hover wipe come from .btn-wipe in
      global.css. A background here would sit on top of the wipe layer
      and the effect would never show. */
-  .btn{
-    position:relative;padding:17px 28px;font-size:16px;
-  }
+  .btn{position:relative;padding:17px 28px;font-size:16px;}
   .spinner{
     position:absolute;width:17px;height:17px;border-radius:50%;
     border:2px solid rgba(255,255,255,.25);border-top-color:#fff;
@@ -365,7 +445,11 @@ const proof = f.socialProof;
   form:global(.busy) .btn-label{opacity:.35;}
   @keyframes spin{to{transform:rotate(360deg)}}
 
-  .form-msg{margin-top:var(--space-3);font-size:14px;font-weight:var(--fw-extrabold);min-height:20px;}
+  /* min-height reserves the line so an error doesn't shove the layout. */
+  .form-msg{
+    margin-top:var(--space-3);font-size:14px;
+    font-weight:var(--fw-extrabold);min-height:20px;
+  }
   .form-msg:global(.err){color:var(--app-error);}
   .form-note{
     font-size:13px;color:var(--app-text-3);
@@ -378,16 +462,27 @@ const proof = f.socialProof;
     background:var(--app-card);border:1px solid rgba(74,222,128,.35);
     animation:popIn .34s cubic-bezier(.2,1.4,.4,1);
   }
-  @keyframes popIn{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
   form:global(.sent) + .sent-card{display:block;}
+  @keyframes popIn{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
   .sent-card h3{font-size:20px;margin-bottom:var(--space-1);outline:none;}
   .sent-card p{color:var(--app-text-2);font-size:15px;font-weight:var(--fw-semibold);}
+  /* Solid colour first, gradient only where clipping to text is
+     actually supported. `color:transparent` plus a gradient that fails
+     to paint means invisible text — and the number nobody can see is
+     indistinguishable from a broken counter. Never let the fallback be
+     nothing. */
   .sent-pos{
     font-size:17px;font-weight:var(--fw-black);margin-bottom:var(--space-2);
-    background:var(--app-grad-h);-webkit-background-clip:text;background-clip:text;color:transparent;
+    color:var(--app-purple,#7B68E8);
+  }
+  @supports ((-webkit-background-clip:text) or (background-clip:text)){
+    .sent-pos{
+      background:var(--app-grad-h);
+      -webkit-background-clip:text;background-clip:text;color:transparent;
+    }
   }
 
-  /* The tick draws itself in, rather than just appearing. */
+  /* The tick draws itself in rather than just appearing. */
   .sent-mark{color:var(--app-success);margin-bottom:var(--space-3);}
   .sm-ring{stroke-dasharray:145;stroke-dashoffset:145;animation:draw .5s .05s ease-out forwards;}
   .sm-tick{stroke-dasharray:40;stroke-dashoffset:40;animation:draw .3s .38s ease-out forwards;}
@@ -410,6 +505,7 @@ const proof = f.socialProof;
   .a2{background:linear-gradient(135deg,#C9A17C,#E0BE9B);}
   .a3{background:linear-gradient(135deg,#A99BF2,#C9A17C);}
   .a4{background:linear-gradient(135deg,#7B68E8,#C9A17C);}
+
   .proof-text{
     font-size:14px;color:var(--app-text-2);font-weight:var(--fw-bold);
     display:inline-flex;align-items:center;gap:7px;
@@ -424,28 +520,34 @@ const proof = f.socialProof;
     70%{box-shadow:0 0 0 7px rgba(74,222,128,0)}
     100%{box-shadow:0 0 0 0 rgba(74,222,128,0)}
   }
+
   /* tabular-nums so the row doesn't reflow as digits change under it. */
   #wl-count{font-variant-numeric:tabular-nums;display:inline-block;}
-  /* A live update that looks identical to a static number isn't
-     communicating anything — so the digit lifts when it moves. */
   #wl-count:global(.bumped){animation:countBump .5s cubic-bezier(.2,1.4,.4,1);}
   @keyframes countBump{
     0%{transform:translateY(0) scale(1)}
     32%{transform:translateY(-3px) scale(1.11)}
     100%{transform:translateY(0) scale(1)}
   }
+  /* Same reasoning as .sent-pos — solid first, gradient as enhancement. */
   .proof-text :global(b){
-    background:var(--app-grad-h);-webkit-background-clip:text;background-clip:text;
-    color:transparent;font-weight:var(--fw-black);
+    color:var(--app-text-1,#fff);font-weight:var(--fw-black);
   }
+  @supports ((-webkit-background-clip:text) or (background-clip:text)){
+    .proof-text :global(b){
+      background:var(--app-grad-h);
+      -webkit-background-clip:text;background-clip:text;color:transparent;
+    }
+  }
+
   @media (max-width:560px){
     .form-row{grid-template-columns:1fr;}
     .f-name,.batch{grid-column:1;}
   }
   @media (prefers-reduced-motion:reduce){
     .sm-ring,.sm-tick{stroke-dashoffset:0;animation:none;}
-    .spinner{animation:none;}
-    .live{animation:none;}
+    .spinner,.live{animation:none;}
     #wl-count:global(.bumped){animation:none;}
+    .sent-card{animation:none;}
   }
 </style>

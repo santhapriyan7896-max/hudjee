@@ -386,9 +386,16 @@ export const waitlistForm = {
   note: 'Free during beta. Android first. One email when your invite is ready.',
   successTitle: "You're on the list.",
   successBody: 'Watch your inbox — invites go out batch by batch.',
+
+  /* Signing up twice is not a mistake to scold someone for. It gets the
+     same confirmation card as a fresh signup, just worded honestly and
+     without a queue position — their real one hasn't changed. */
+  duplicateTitle: "You're already on the list.",
+  duplicateBody: 'No need to sign up again — your place is saved. Invites go out batch by batch.',
+
   errorInvalid: 'Enter a valid email address.',
-  errorGeneric: 'Something went wrong. Try again in a moment.',
-  errorDuplicate: "You're already on the list.",
+  errorGeneric: "Something went wrong on our end. Try again in a moment — it's not you.",
+  errorOffline: 'Looks like you’re offline. Check your connection and press Join again.',
   errorEmpty: 'We need an email to send your invite.',
   errorNameEmpty: 'What should we call you?',
   positionPrefix: "You're #",
@@ -407,16 +414,20 @@ export const waitlistForm = {
    *               only a safety net, so keep it slow — 60s is plenty.
    *               Turn it up to ~15000 if you set realtime: false.
    *               0 disables polling entirely.
-   *  fallbackCount used only in demo mode, when no Supabase env is set.
+   *
+   *  There is no fake fallback number any more. If the real count can't
+   *  be read, the row hides — the page never shows a figure it hasn't
+   *  been told by the database.
    */
   socialProof: {
     suffix: 'students already waiting',
     suffixOne: 'student already waiting',   // used when the count is 1
     offset: 0,       // added to the real count — keep at 0 for the truth
-    minToShow: 0,    // 0 = always show, starting from zero
+    /* 1, not 0: "0 students already waiting" under a signup form is an
+       argument against joining. Below this the row hides entirely. */
+    minToShow: 1,
     realtime: true,  // websocket push — the number moves live
     pollMs: 60000,   // backstop only; realtime does the real work
-    fallbackCount: 0,
   },
 };
 

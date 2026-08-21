@@ -1,50 +1,48 @@
 /**
- * ────────────────────────────────────────────────────────────────
+ * ══════════════════════════════════════════════════════════════════
  *  Minimal Supabase Realtime client — broadcast receive only.
  *
  *  WHY NOT @supabase/supabase-js: the official client is ~35 KB gzip
  *  and brings auth, postgrest and storage along for the ride. This
  *  page needs exactly one thing — "tell me when the waitlist count
  *  changes" — so this speaks the Phoenix channel protocol directly
- *  over a raw WebSocket. ~70 lines, zero dependencies.
+ *  over a raw WebSocket. Zero dependencies.
  *
- *  Protocol, for anyone maintaining this:
- *    connect  wss://<ref>.supabase.co/realtime/v1/websocket
- *               ?apikey=<anon>&vsn=1.0.0
- *    join     { topic: "realtime:<topic>", event: "phx_join", ... }
- *    keepalive{ topic: "phoenix", event: "heartbeat" } every 25s —
- *             the server drops the socket at 60s of silence
- *    receive  { event: "broadcast",
- *               payload: { event, payload, type: "broadcast" } }
+ *  Protocol, for whoever maintains this next:
+ *    connect   wss://<ref>.supabase.co/realtime/v1/websocket
+ *                ?apikey=<key>&vsn=1.0.0
+ *    join      { topic: "realtime:<topic>", event: "phx_join", … }
+ *    keepalive { topic: "phoenix", event: "heartbeat" } every 25s —
+ *              the server drops a silent socket at 60s
+ *    receive   { event: "broadcast",
+ *                payload: { event, payload, type: "broadcast" } }
  *
- *  The channel is PUBLIC (`private: false`), so no auth handshake is
- *  needed to listen. Nothing sensitive travels on it — the server
- *  broadcasts a single integer. See supabase/waitlist.sql.
- * ────────────────────────────────────────────────────────────────
+ *  The channel is PUBLIC (`private: false`), so listening needs no
+ *  auth handshake. Nothing sensitive is on it — the server sends one
+ *  integer that the page already displays to everyone.
+ * ══════════════════════════════════════════════════════════════════
  */
 
-import { supabaseKeyIsJwt, supabaseUrl } from './waitlist';
+import { config } from './waitlist';
 
-/* Normalised there, not here — see the note in waitlist.ts on why the
-   dashboard's "RESTful endpoint" URL has to be tolerated. */
-const URL_ = supabaseUrl();
-const KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
-
-export const realtimeAvailable = Boolean(URL_ && KEY && typeof WebSocket !== 'undefined');
+export const realtimeAvailable = () =>
+  config.isConfigured && typeof WebSocket !== 'undefined';
 
 type Payload = Record<string, unknown>;
 
 export interface BroadcastOptions {
-  /** Fires whenever the socket (re)connects — use it to resync state. */
+  /** Fires on every (re)connect. Use it to resync — messages sent
+   *  while the socket was down were never queued for us. */
   onOpen?: () => void;
-  /** Fires when the socket drops. The client reconnects on its own. */
+  /** Fires when the socket drops. Reconnection is automatic. */
   onClose?: () => void;
 }
 
 /**
  * Listen for one broadcast `event` on one `topic`.
  * Returns an unsubscribe function. Reconnects with exponential
- * backoff; never throws.
+ * backoff. Never throws — a dead socket degrades to a stale number,
+ * which the caller's backstop poll then corrects.
  */
 export function subscribeBroadcast(
   topic: string,
@@ -52,7 +50,7 @@ export function subscribeBroadcast(
   onMessage: (payload: Payload) => void,
   opts: BroadcastOptions = {},
 ): () => void {
-  if (!realtimeAvailable) return () => {};
+  if (!realtimeAvailable()) return () => {};
 
   let ws: WebSocket | null = null;
   let heartbeat = 0;
@@ -63,7 +61,7 @@ export function subscribeBroadcast(
 
   const reconnect = () => {
     if (stopped) return;
-    // 1s, 2s, 4s … capped at 30s, with jitter so a mass disconnect
+    // 1s, 2s, 4s … capped at 30s, plus jitter so a mass disconnect
     // doesn't come back as a thundering herd.
     const delay = Math.min(1000 * 2 ** retries++, 30_000) + Math.random() * 400;
     window.setTimeout(connect, delay);
@@ -72,10 +70,10 @@ export function subscribeBroadcast(
   const connect = () => {
     if (stopped) return;
 
-    const base = String(URL_).replace(/^http/, 'ws').replace(/\/+$/, '');
+    const base = config.url.replace(/^http/, 'ws');
     try {
       ws = new WebSocket(
-        `${base}/realtime/v1/websocket?apikey=${encodeURIComponent(String(KEY))}&vsn=1.0.0`,
+        `${base}/realtime/v1/websocket?apikey=${encodeURIComponent(config.key)}&vsn=1.0.0`,
       );
     } catch {
       reconnect();
@@ -98,10 +96,10 @@ export function subscribeBroadcast(
               private: false,
             },
             /* `access_token` is the slot for a user JWT. A legacy anon
-               key is one, so it goes here; a publishable key is not, and
-               sending it would be rejected — the apikey query param has
-               already authenticated the socket either way. */
-            ...(supabaseKeyIsJwt() ? { access_token: KEY } : {}),
+               key is one, so it goes here; a publishable key is not and
+               would be rejected. The apikey query param has already
+               authenticated the socket either way. */
+            ...(config.keyIsJwt ? { access_token: config.key } : {}),
           },
         }),
       );
@@ -127,11 +125,10 @@ export function subscribeBroadcast(
       const outer = msg.payload ?? {};
       // realtime.send() nests the user payload one level down.
       if (outer.event && outer.event !== event) return;
-      const body = (outer.payload ?? outer) as Payload;
       try {
-        onMessage(body);
+        onMessage((outer.payload ?? outer) as Payload);
       } catch {
-        /* a bad handler must not kill the socket */
+        /* a throwing handler must not take the socket with it */
       }
     };
 
@@ -146,8 +143,8 @@ export function subscribeBroadcast(
 
   connect();
 
-  // Browsers freeze sockets in background tabs and some mobile
-  // browsers kill them outright. Nudge a reconnect on return.
+  /* Browsers freeze sockets in background tabs and some mobile
+     browsers close them outright. Nudge a reconnect on return. */
   const onVisible = () => {
     if (!document.hidden && ws && ws.readyState > WebSocket.OPEN) {
       retries = 0;

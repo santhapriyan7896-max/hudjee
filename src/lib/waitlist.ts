@@ -1,70 +1,92 @@
 /**
- * ────────────────────────────────────────────────────────────────
- *  Waitlist submission.
+ * ══════════════════════════════════════════════════════════════════
+ *  Waitlist — the only module that talks to Supabase.
  *
- *  Posts straight to Supabase from the browser using the anon key.
- *  This is safe *only* because the `waitlist` table has an
- *  insert-only RLS policy and no select policy — see
- *  supabase/waitlist.sql. Nobody can read the list back with this
- *  key, they can only add to it.
+ *  The page posts straight to PostgREST from the browser using the
+ *  public key. That's safe *because* of how the table is locked down,
+ *  not in spite of it: `waitlist` has an insert-only RLS policy,
+ *  column grants on exactly four columns, and no select policy at
+ *  all. The key can add a row and nothing else — it cannot read the
+ *  list back, edit it, or delete from it. See supabase/waitlist.sql.
  *
- *  With no env vars set, runs in demo mode: fakes a success after a
- *  short delay and makes no network call.
- * ────────────────────────────────────────────────────────────────
+ *  Counts and queue positions come from two SECURITY DEFINER
+ *  functions that each return a single integer, so the table stays
+ *  unreadable while the page still gets its numbers.
+ *
+ *  ── The rule this module is built around ────────────────────────
+ *  Never report a success we did not observe.
+ *
+ *  The version this replaces faked a success whenever Supabase was
+ *  unconfigured — "handy for design review". That one decision hid a
+ *  complete outage behind a green tick for days: real people filled
+ *  in the form, saw "You're on the list", and were never on the list.
+ *  Every failure below now returns a distinct, nameable status, and
+ *  the caller is expected to show it.
+ * ══════════════════════════════════════════════════════════════════
  */
 
-const RAW_URL = import.meta.env.PUBLIC_SUPABASE_URL;
-const KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+/* ── Configuration ─────────────────────────────────────────────────
+   Both values are compiled in at build time by Astro, which means a
+   change to them requires a rebuild, not just a restart — and that
+   they must be set on the *host*, not only in a local .env. */
+
+const RAW_URL = String(import.meta.env.PUBLIC_SUPABASE_URL ?? '').trim();
+const RAW_KEY = String(import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '').trim();
 
 /**
- * Everything here builds its own path onto the project origin, so the
- * base must be just `https://<ref>.supabase.co`.
+ * The dashboard shows two URLs and one of them is a trap: a bare
+ * Project URL, and a "RESTful endpoint" already ending in `/rest/v1`.
+ * Every call here appends its own path, so pasting the endpoint
+ * produces `/rest/v1/rest/v1/rpc/...` — a 404 that reads exactly like
+ * a missing database function, and a websocket that fails auth.
  *
- * The dashboard shows two URLs though, and the second one is a trap: a
- * bare Project URL, and a "RESTful endpoint" that already ends in
- * `/rest/v1`. Paste the endpoint and every request comes out doubled —
- * `/rest/v1/rest/v1/rpc/waitlist_count` — which 404s and reads exactly
- * like a missing database function. The websocket lands on
- * `/rest/v1/realtime/v1/websocket` and fails auth for the same reason.
- *
- * Rather than make that a documentation problem, accept either form.
+ * Cheaper to accept both than to document the difference.
  */
-const URL_ = String(RAW_URL ?? '')
-  .trim()
-  .replace(/\/+$/, '')            // trailing slashes
-  .replace(/\/rest\/v1$/, '')     // the RESTful-endpoint suffix
-  .replace(/\/+$/, '');
-
-/** The normalised project origin — the realtime client needs it too. */
-export const supabaseUrl = () => URL_;
-
-export const isConfigured = Boolean(URL_ && KEY);
+const URL_ = RAW_URL.replace(/\/+$/, '').replace(/\/rest\/v1$/, '').replace(/\/+$/, '');
 
 /**
- * Supabase is mid-migration between two key formats:
+ * Supabase is mid-migration between key formats:
+ *   legacy   `anon` — a JWT, starts "eyJ", retired end of 2026
+ *   current  `sb_publishable_…` — an opaque string
  *
- *   legacy      anon / service_role — JWTs, start "eyJ", deprecated end of 2026
- *   current     sb_publishable_… / sb_secret_… — opaque strings
- *
- * The difference matters here: a publishable key must NOT be sent as
- * `Authorization: Bearer …`, because that header is where a *user's*
- * JWT goes and an opaque key isn't one. Sending it there gets the
- * request rejected. Both formats belong in the `apikey` header.
- *
- * So: detect the shape and send the right headers. This works today with
- * a legacy anon key and keeps working when you rotate to a publishable
- * one, without another code change.
+ * They go in different places. A JWT may also ride in the
+ * `Authorization: Bearer` header; an opaque key may not, because that
+ * header is where a *user's* token goes. Both belong in `apikey`.
  */
-const isJwtKey = /^eyJ[\w-]+\./.test(String(KEY ?? ''));
+const KEY_IS_JWT = /^eyJ[\w-]+\./.test(RAW_KEY);
 
-const authHeaders = (extra: Record<string, string> = {}): Record<string, string> => {
-  const h: Record<string, string> = { apikey: String(KEY), ...extra };
-  if (isJwtKey) h.Authorization = `Bearer ${KEY}`;
+export const config = {
+  url: URL_,
+  key: RAW_KEY,
+  keyIsJwt: KEY_IS_JWT,
+  isConfigured: Boolean(URL_ && RAW_KEY),
+} as const;
+
+const headers = (extra: Record<string, string> = {}): Record<string, string> => {
+  const h: Record<string, string> = { apikey: RAW_KEY, ...extra };
+  if (KEY_IS_JWT) h.Authorization = `Bearer ${RAW_KEY}`;
   return h;
 };
 
-/** The realtime client needs the same distinction. */
-export const supabaseKeyIsJwt = () => isJwtKey;
+/* ── Diagnostics ───────────────────────────────────────────────────
+   Every failure path says what broke and what to do about it, once.
+   A silent null is what made the last bug take days to find. */
+
+const warned = new Set<string>();
+export function explain(key: string, message: string) {
+  if (warned.has(key)) return;
+  warned.add(key);
+  console.warn(`[waitlist] ${message}`);
+}
+
+const MISSING_ENV =
+  'PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_ANON_KEY are not in this build. ' +
+  'They are compiled in at build time, so setting them in a local .env is not enough — ' +
+  'add both to your host (Vercel → Settings → Environment Variables, Production) and redeploy.';
+
+/* ── Types ─────────────────────────────────────────────────────────
+   A union, not a boolean. The caller has to handle each case, and
+   the compiler makes sure it does. */
 
 export interface WaitlistEntry {
   name: string;
@@ -74,120 +96,139 @@ export interface WaitlistEntry {
 }
 
 export type SubmitResult =
-  | { ok: true; position: number | null }
-  | { ok: false; reason: 'duplicate' | 'network' };
+  /** The row is in the database. `position` is best-effort. */
+  | { status: 'joined'; position: number | null }
+  /** This address is already on the list. Not a failure. */
+  | { status: 'duplicate' }
+  /** Reached Supabase; it refused. Almost always a setup problem. */
+  | { status: 'rejected'; http: number; detail: string }
+  /** Never reached Supabase — offline, DNS, blocked. Retrying may work. */
+  | { status: 'offline' }
+  /** This build has no Supabase credentials. Nothing can work. */
+  | { status: 'unconfigured' };
 
-export async function submitWaitlist(entry: WaitlistEntry): Promise<SubmitResult> {
-  if (!isConfigured) {
-    await new Promise((r) => setTimeout(r, 700));
-    console.info('[waitlist] demo mode — no endpoint configured:', entry);
-    return { ok: true, position: null };
-  }
+export type CountResult =
+  | { ok: true; count: number }
+  | { ok: false; why: 'unconfigured' | 'http' | 'offline' | 'shape' };
 
-  try {
-    const res = await fetch(`${URL_}/rest/v1/waitlist`, {
-      method: 'POST',
-      headers: authHeaders({
-        'Content-Type': 'application/json',
-        Prefer: 'return=minimal',
-      }),
-      body: JSON.stringify({
-        name: entry.name,
-        email: entry.email,
-        batch: entry.batch,
-        source: entry.source,
-      }),
-    });
-
-    if (res.ok) return { ok: true, position: await fetchPosition(entry.email) };
-    // 409 = unique violation on email — already signed up.
-    if (res.status === 409) return { ok: false, reason: 'duplicate' };
-    return { ok: false, reason: 'network' };
-  } catch {
-    return { ok: false, reason: 'network' };
-  }
-}
+/* ── Validation ────────────────────────────────────────────────────
+   Deliberately loose. An address that looks odd but is real must get
+   through; the confirmation email is the real validator. The only
+   job here is catching typos before a round trip. */
 
 export const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
 
-/**
- * Queue position, via a security-definer RPC that returns only a count.
- * The table itself stays unreadable with the anon key. Returns null on
- * any failure — position is a nice-to-have, never a blocker.
- */
-async function fetchPosition(email: string): Promise<number | null> {
-  try {
-    const res = await fetch(`${URL_}/rest/v1/rpc/waitlist_position`, {
-      method: 'POST',
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ p_email: email }),
-    });
-    if (!res.ok) return null;
-    const n = await res.json();
-    return typeof n === 'number' ? n : null;
-  } catch {
-    return null;
+/* ── Join ──────────────────────────────────────────────────────────── */
+
+export async function submitWaitlist(entry: WaitlistEntry): Promise<SubmitResult> {
+  if (!config.isConfigured) {
+    explain('env', MISSING_ENV);
+    return { status: 'unconfigured' };
   }
+
+  const email = entry.email.trim();
+  const name = entry.name.trim();
+
+  let res: Response;
+  try {
+    res = await fetch(`${URL_}/rest/v1/waitlist`, {
+      method: 'POST',
+      headers: headers({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+      body: JSON.stringify({
+        name: name || null,
+        email,
+        batch: entry.batch || null,
+        source: entry.source,
+      }),
+    });
+  } catch {
+    // fetch() only rejects when the request never completed.
+    return { status: 'offline' };
+  }
+
+  if (res.ok) {
+    const position = await fetchPosition(email);
+    /* The insert reported success but the row is invisible to a
+       function that counts every row. That shouldn't be possible —
+       worth a line in the console if it ever happens. */
+    if (position === null) {
+      explain(
+        'no-position',
+        'The signup was accepted but waitlist_position() could not find it. ' +
+          'If this repeats, check that supabase/waitlist.sql ran completely.',
+      );
+    }
+    return { status: 'joined', position };
+  }
+
+  // 409 = unique violation on email. They're already in — not an error.
+  if (res.status === 409) return { status: 'duplicate' };
+
+  const detail = await res.text().catch(() => '');
+  explain(
+    `insert-${res.status}`,
+    `Signup rejected with HTTP ${res.status}. ` +
+      (res.status === 404
+        ? 'The `waitlist` table does not exist — run supabase/waitlist.sql.'
+        : res.status === 401 || res.status === 403
+          ? 'Row-level security refused the insert. Re-run supabase/waitlist.sql, which creates the policy and the column grants.'
+          : `Supabase said: ${detail.slice(0, 300)}`),
+  );
+  return { status: 'rejected', http: res.status, detail };
+}
+
+/* ── Numbers ───────────────────────────────────────────────────────── */
+
+/** Shared plumbing for the two integer-returning RPCs. */
+async function callRpc(fn: string, body: unknown): Promise<CountResult> {
+  if (!config.isConfigured) {
+    explain('env', MISSING_ENV);
+    return { ok: false, why: 'unconfigured' };
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${URL_}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(body),
+    });
+  } catch {
+    return { ok: false, why: 'offline' };
+  }
+
+  if (!res.ok) {
+    explain(
+      `${fn}-${res.status}`,
+      `${fn}() returned HTTP ${res.status}. ` +
+        (res.status === 404
+          ? 'That function does not exist yet — run supabase/waitlist.sql in the Supabase SQL editor.'
+          : res.status === 401 || res.status === 403
+            ? 'The public role cannot execute it — re-run supabase/waitlist.sql, which includes the grant.'
+            : 'Check the Supabase logs.'),
+    );
+    return { ok: false, why: 'http' };
+  }
+
+  const value = await res.json().catch(() => null);
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    explain(`${fn}-shape`, `${fn}() returned ${JSON.stringify(value)}, expected a number.`);
+    return { ok: false, why: 'shape' };
+  }
+  return { ok: true, count: value };
+}
+
+/** Total signups. Drives the live counter. */
+export async function fetchWaitlistCount(): Promise<CountResult> {
+  return callRpc('waitlist_count', {});
 }
 
 /**
- * One warning per distinct problem. The counter polls forever, so an
- * unguarded console.warn would bury the page's own logs.
+ * Queue position for one address. Always best-effort — it decorates
+ * the confirmation, it never gates it, so a failure returns null
+ * rather than a status the caller has to handle.
  */
-const warned = new Set<string>();
-const warnOnce = (key: string, msg: string) => {
-  if (warned.has(key)) return;
-  warned.add(key);
-  console.warn(msg);
-};
-
-/**
- * Total signups, via a security-definer RPC returning a single int.
- * Same reasoning as fetchPosition: the table stays unreadable with the
- * anon key. Returns null when unconfigured or on any failure.
- *
- * A null used to be silent, which made "the counter shows 0" impossible
- * to tell apart from "nobody has signed up". Each failure path now says
- * what's wrong and what to do about it — open DevTools and the page
- * diagnoses itself.
- */
-export async function fetchWaitlistCount(): Promise<number | null> {
-  if (!isConfigured) {
-    warnOnce(
-      'env',
-      '[waitlist] No PUBLIC_SUPABASE_URL / PUBLIC_SUPABASE_ANON_KEY in this build. ' +
-        'The form is in DEMO MODE — signups are faked and nothing is saved. ' +
-        'Set both env vars on your host (not just in local .env) and redeploy: ' +
-        'they are compiled in at build time.',
-    );
-    return null;
-  }
-  try {
-    const res = await fetch(`${URL_}/rest/v1/rpc/waitlist_count`, {
-      method: 'POST',
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: '{}',
-    });
-    if (!res.ok) {
-      warnOnce(
-        `rpc-${res.status}`,
-        `[waitlist] waitlist_count() returned HTTP ${res.status}. ` +
-          (res.status === 404
-            ? 'That function does not exist yet — run supabase/waitlist.sql in the Supabase SQL editor.'
-            : res.status === 401 || res.status === 403
-              ? 'The anon role cannot execute it — re-run supabase/waitlist.sql, which includes the grant.'
-              : 'Check Supabase logs.'),
-      );
-      return null;
-    }
-    const n = await res.json();
-    if (typeof n !== 'number') {
-      warnOnce('rpc-shape', `[waitlist] waitlist_count() returned ${JSON.stringify(n)}, expected a number.`);
-      return null;
-    }
-    return n;
-  } catch (err) {
-    warnOnce('rpc-net', `[waitlist] Could not reach Supabase for the counter: ${String(err)}`);
-    return null;
-  }
+export async function fetchPosition(email: string): Promise<number | null> {
+  const r = await callRpc('waitlist_position', { p_email: email.trim() });
+  return r.ok && r.count > 0 ? r.count : null;
 }
