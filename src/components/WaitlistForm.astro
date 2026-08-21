@@ -91,15 +91,28 @@ const proof = f.socialProof;
       <span class="count-wrap">
         <b id="wl-count">0</b>
         <!--
-          Hand-drawn underline. Two overlapping strokes rather than one:
-          a real marker doubles back, and a single clean curve reads as
-          a border, not a mark someone made. It redraws whenever the
-          number moves — that's the "this is live" signal, replacing the
-          pulsing green dot that every landing page on the internet has.
+          The number gets circled, the way you'd ring something on paper.
+
+          Two passes, not one. A single closed ellipse reads as a border;
+          a real pen goes round, overshoots where it started, and comes
+          back over its own line. The first loop overshoots past its
+          start point, the second is a lighter partial pass offset from
+          the first.
+
+          pathLength="1" normalises both paths, so the dash animation is
+          0→1 regardless of how wide the number makes the ellipse.
         -->
-        <svg class="ink-underline" viewBox="0 0 120 14" preserveAspectRatio="none" aria-hidden="true">
-          <path class="ink-1" d="M4 9.4C21 5.6 40 10.4 58 7.6 76 4.9 98 9.1 116 6.4"/>
-          <path class="ink-2" d="M9 11.6C29 9.2 47 12.4 68 10.1 88 7.9 103 11.6 113 10.2"/>
+        <svg class="ink-circle" viewBox="0 0 120 60" preserveAspectRatio="none" aria-hidden="true">
+          <!-- Deliberately lopsided: flatter across the top-left, fuller
+               through the bottom-right, and it overshoots well past where
+               it started. A symmetrical ellipse reads as a border. -->
+          <path class="ink-1" pathLength="1"
+                d="M101 15C86 4 46 -1 25 10 4 21 5 46 32 54 59 62 105 55 113 39 119 27 108 13 82 6"/>
+          <!-- The second sweep is shorter and drifts off the first rather
+               than tracing it, so the two read as two passes of a pen and
+               not as one thick line. -->
+          <path class="ink-2" pathLength="1"
+                d="M107 24C92 11 47 3 26 17 13 26 18 44 42 51"/>
         </svg>
       </span>
       <span id="wl-suffix">{proof.suffix}</span>
@@ -315,12 +328,12 @@ const proof = f.socialProof;
     };
 
     /** A live update that looks identical to a static number isn't
-        communicating anything. The underline re-draws itself and the
+        communicating anything. The ring re-draws itself and the
         digit lifts — motion that reads as someone marking a page,
         rather than a status LED. */
-    const strokes = box.querySelectorAll<SVGPathElement>('.ink-underline path');
+    const strokes = box.querySelectorAll<SVGPathElement>('.ink-circle path');
 
-    /** Re-draw the underline from scratch. */
+    /** Re-draw the ring from scratch. */
     const drawInk = () => {
       if (reduce) return;
       strokes.forEach((s) => s.classList.remove('drawing'));
@@ -328,7 +341,7 @@ const proof = f.socialProof;
       strokes.forEach((s) => s.classList.add('drawing'));
     };
 
-    /** The number changed: lift the digit and re-ink the underline. */
+    /** The number changed: lift the digit and re-ink the ring. */
     const mark = () => {
       if (reduce) return;
       out.classList.remove('bumped');
@@ -354,7 +367,7 @@ const proof = f.socialProof;
       live = true;
       animateTo(target);
 
-      /* On the very first reveal the underline draws itself in as the
+      /* On the very first reveal the ring draws itself in as the
          count-up settles, so the row arrives as one gesture rather than
          a number that pops and a line that was already there. */
       if (first) window.setTimeout(drawInk, 430);
@@ -531,47 +544,56 @@ const proof = f.socialProof;
   .proof[hidden]{display:none;}
   .proof-text{
     font-size:15px;color:var(--app-text-2);font-weight:var(--fw-bold);
-    display:inline-flex;align-items:baseline;gap:9px;
+    /* Roomier than it looks it needs to be: the ring is drawn ~17px
+       outside the number's box on each side, so this gap has to clear
+       that before the following word starts, or the stroke cuts through
+       the first letter. */
+    display:inline-flex;align-items:baseline;gap:30px;
   }
 
-  /* ── The ink underline ──────────────────────────────────────────
+  /* ── The circled number ─────────────────────────────────────────
      Replaces the stacked avatars and the pulsing green dot. Both were
      stock social-proof decoration: invented faces and a status LED
      that every landing page on the internet already has.
 
-     This is drawn instead of lit. Two overlapping strokes, because a
-     real marker doubles back and a single clean curve reads as a
-     border rather than a mark someone made. It re-draws whenever the
-     count moves, which is the same signal the dot was reaching for —
-     but earned by the motion instead of asserted by a colour. */
-  .count-wrap{position:relative;display:inline-block;}
-  /* Centred with a minimum length, not pinned to the number's edges.
-     The SVG stretches horizontally, so on a single digit a full-width
-     rule would compress the wobble into a smudge. A floor of 54px keeps
-     the stroke legible and lets it overshoot the digit slightly — which
-     is what a real underline drawn by hand does anyway. */
-  .ink-underline{
-    position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);
-    width:calc(100% + 12px);min-width:54px;height:11px;
+     This is drawn instead of lit — the number gets ringed the way you'd
+     circle something on paper. It re-draws whenever the count moves,
+     which is the same signal the dot was reaching for, but earned by
+     the motion instead of asserted by a colour. */
+  .count-wrap{position:relative;display:inline-block;padding:0 7px;}
+
+  /* Sized off the number and centred on it, with a floor so a single
+     digit still gets a ring rather than a tight dot. Generous, because a
+     ring drawn tight to the glyphs reads as a chip or a badge.
+
+     The tilt is doing real work: nobody circles anything perfectly
+     level, and two degrees is the difference between "someone marked
+     this" and "a designer drew an ellipse". */
+  .ink-circle{
+    position:absolute;left:50%;top:50%;
+    translate:-50% -50%;rotate:-2.4deg;
+    width:calc(100% + 34px);min-width:70px;
+    height:calc(100% + 26px);
     overflow:visible;pointer-events:none;
   }
-  .ink-underline path{
+  .ink-circle path{
     fill:none;
     stroke:var(--app-amber,#C9A17C);
-    stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;
+    stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;
     /* Keeps the stroke an even weight even though the SVG is stretched
-       horizontally to whatever width the number happens to be. */
+       to whatever width the number happens to be. */
     vector-effect:non-scaling-stroke;
-    stroke-dasharray:170;stroke-dashoffset:0;
+    stroke-dasharray:1;stroke-dashoffset:0;   /* pathLength="1" */
   }
-  /* The second pass is lighter and slightly offset — the overlap is
-     what stops it looking like a border. */
-  .ink-underline .ink-2{stroke-width:1.5;opacity:.45;}
+  /* The second pass is lighter — the overlap is what stops the ring
+     looking like a border. */
+  .ink-circle .ink-2{stroke-width:1.4;opacity:.4;}
 
-  .ink-underline path.drawing{animation:inkDraw .58s cubic-bezier(.62,.03,.31,1) both;}
-  .ink-underline .ink-2.drawing{animation-duration:.72s;animation-delay:.07s;}
-  @keyframes inkDraw{
-    from{stroke-dashoffset:170}
+  /* Fast round, slower settle: a pen accelerates through a circle. */
+  .ink-circle path.drawing{animation:inkRing .66s cubic-bezier(.55,.06,.3,1) both;}
+  .ink-circle .ink-2.drawing{animation-duration:.5s;animation-delay:.19s;}
+  @keyframes inkRing{
+    from{stroke-dashoffset:1}
     to{stroke-dashoffset:0}
   }
 
@@ -603,8 +625,8 @@ const proof = f.socialProof;
     .spinner{animation:none;}
     #wl-count:global(.bumped){animation:none;}
     .sent-card{animation:none;}
-    /* The underline still shows — it just arrives already drawn. */
-    .ink-underline path,.ink-underline path:global(.drawing){
+    /* The ring still shows — it just arrives already drawn. */
+    .ink-circle path,.ink-circle path:global(.drawing){
       animation:none;stroke-dashoffset:0;
     }
   }

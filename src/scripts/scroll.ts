@@ -410,10 +410,13 @@ function initTools() {
  * ─────────────────────────────────────────────────────────────────────── */
 const WHY_GREEN = '#0AE448';
 const WHY_INK = '#F4EFE2';
-/** Total run time of the whole reel, in seconds. The one dial. */
-const WHY_RUN_S = 1.25;
-/** Head start between one phrase and the next, before time-scaling. */
-const WHY_STAGGER = 0.09;
+/** Total run time of the whole reel, in seconds. The one dial.
+ *  4.5 held the page hostage; 1.25 was an over-correction and read as a
+ *  flicker. This is long enough to watch and short enough to scroll past. */
+const WHY_RUN_S = 2.2;
+/** Head start between one phrase and the next, before time-scaling.
+ *  0 makes all four fire at once; higher reads more like a sequence. */
+const WHY_STAGGER = 0.13;
 
 function initExplainer() {
   const sec = document.querySelector<HTMLElement>('#why');
