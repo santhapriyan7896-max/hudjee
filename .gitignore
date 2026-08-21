@@ -4,3 +4,7 @@ dist/
 .env
 .DS_Store
 scratch/
+
+# Supabase Edge Function secrets. Contains a live mail-provider API key
+# and the webhook shared secret — never commit this.
+supabase/.env.secrets
