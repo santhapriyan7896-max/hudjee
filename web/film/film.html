@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>HudJee film</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital@0;1&display=block">
+<style>
+@font-face { font-family: "Montserrat"; font-weight: 400; font-display: block; src: url("{{M400}}") format("truetype"); }
+@font-face { font-family: "Montserrat"; font-weight: 500; font-display: block; src: url("{{M500}}") format("truetype"); }
+@font-face { font-family: "Montserrat"; font-weight: 600; font-display: block; src: url("{{M600}}") format("truetype"); }
+@font-face { font-family: "Montserrat"; font-weight: 700; font-display: block; src: url("{{M700}}") format("truetype"); }
+
+/* The app's theme/ui.ts. Sizes are in rem, where 1rem is one app point times
+   the cut's scale, so every card is drawn at the app's own proportions. */
+:root {
+  --bg: #0A0A0C; --surface: #131317; --surface-subtle: #1B1B20; --surface-strong: #232329;
+  --divider: #26262C; --dot: #3F3F46; --text: #FFFFFF; --muted: #9CA3AF; --faint: #838A96;
+  --on-light: #0A0A0C; --pos: #5FB48A; --neg: #D4685E;
+  --mark-today: #E5E7EB; --mark-missed: #4B5563; --mark-future: #2A2A30; --mark-partial: #6B7280;
+  --ramp: linear-gradient(90deg, #6D5DF6, #4A4A63 50%, #C99A6B);
+  --ramp-diag: linear-gradient(135deg, #6D5DF6, #4A4A63 50%, #C99A6B);
+  --shadow: 0 26rem 60rem -22rem rgba(0, 0, 0, 0.9);
+}
+* { box-sizing: border-box; }
+html { font-size: 1.75px; }
+body { margin: 0; background: var(--bg); }
+p, ol { margin: 0; padding: 0; }
+.frame {
+  position: relative; overflow: hidden; background: var(--bg); color: var(--text);
+  font-family: "Montserrat", sans-serif; font-size: 15rem; line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+.scene { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; }
+.ic { width: 1em; height: 1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.mk { display: block; aspect-ratio: 297 / 300; background: url("../public/mark.webp") center / contain no-repeat; }
+.card { background: var(--surface); border-radius: 22rem; box-shadow: var(--shadow); }
+.lbl { font-size: 11rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--faint); }
+.sep { display: inline-block; width: 3rem; height: 3rem; border-radius: 50%; background: var(--dot); vertical-align: middle; margin: 0 7rem; }
+.btnx {
+  display: flex; align-items: center; justify-content: center; gap: 8rem;
+  height: 44rem; padding: 0 20rem; border-radius: 14rem; border: 1.5rem solid transparent;
+  background: var(--surface-subtle); font-size: 14.5rem; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap;
+}
+.btnx--ramp { background: linear-gradient(var(--bg), var(--bg)) padding-box, var(--ramp) border-box; }
+.btnx .ic { width: 15rem; height: 15rem; stroke-width: 2.4; }
+
+/* the agent pill, muse's "Muse · Adding to cart" */
+.pill {
+  position: absolute; left: 50%; width: 312rem; height: 54rem; margin-left: -156rem;
+  display: flex; align-items: center; gap: 12rem; padding: 0 18rem 0 8rem;
+  border-radius: 27rem; background: var(--surface-subtle);
+  box-shadow: 0 18rem 40rem -16rem rgba(0, 0, 0, 0.9), inset 0 0 0 1rem var(--divider);
+  visibility: hidden;
+}
+.pill__av { display: grid; place-items: center; width: 38rem; height: 38rem; flex: none; border-radius: 50%; background: var(--bg); }
+.pill__av .mk { width: 21rem; }
+.pill__txt { display: grid; gap: 1rem; min-width: 0; }
+.pill__txt b { font-size: 14rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; }
+.pill__status { display: flex; align-items: center; gap: 6rem; font-size: 12.5rem; line-height: 1.3; color: var(--muted); white-space: nowrap; }
+.pill__status .ic { width: 13rem; height: 13rem; color: var(--text); stroke-width: 2.4; }
+
+/* intro and outro */
+.bigmark { position: absolute; left: 0; top: 0; width: 150rem; aspect-ratio: 297 / 300; visibility: hidden; }
+.bigmark span { position: absolute; inset: 0; background: url("../public/mark.webp") center / contain no-repeat; }
+.bigmark .l { clip-path: inset(0 53.42% 0 0); }
+.bigmark .r { clip-path: inset(0 0 0 46.58%); }
+.intro { position: absolute; left: 0; right: 0; display: grid; justify-items: center; text-align: center; }
+.intro__wm { height: 40rem; overflow: hidden; }
+.intro__wm img { display: block; height: 40rem; }
+.intro__tag { margin-top: 18rem; font-size: 18rem; font-weight: 500; color: var(--muted); }
+.intro__soon { margin-top: 10rem; font-size: 14rem; color: var(--faint); }
+
+/* alarm */
+.alarm { width: 340rem; padding: 24rem; border-radius: 26rem; }
+.alarm__app { display: flex; align-items: center; gap: 7rem; font-size: 12rem; color: var(--faint); }
+.alarm__app .mk { width: 18rem; }
+.alarm__app b { color: var(--text); font-weight: 600; }
+.alarm__app .sep { margin: 0 2rem; }
+.alarm__time { display: flex; align-items: baseline; gap: 7rem; margin-top: 14rem; }
+.alarm__time b { font-size: 66rem; font-weight: 600; letter-spacing: -0.05em; line-height: 1; }
+.alarm__time span { font-size: 16rem; font-weight: 600; color: var(--muted); }
+.alarm__title { margin-top: 12rem; font-size: 18rem; font-weight: 700; letter-spacing: -0.02em; }
+.alarm__body { margin-top: 5rem; font-size: 13rem; line-height: 1.5; color: var(--muted); }
+.alarm__acts { display: grid; gap: 10rem; margin-top: 20rem; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10rem; }
+
+/* practice */
+.practice { display: flex; align-items: center; gap: 40rem; }
+.port .practice { flex-direction: column; gap: 18rem; }
+.qstack { position: relative; display: grid; }
+.qstack > * { grid-area: 1 / 1; }
+.qcard { width: 360rem; padding: 18rem; display: grid; align-content: start; }
+.q__top { display: grid; grid-template-columns: 36rem 1fr auto; align-items: center; gap: 10rem; }
+.glass { display: grid; place-items: center; width: 36rem; height: 36rem; border-radius: 50%; background: var(--surface-subtle); box-shadow: inset 0 0 0 1rem var(--divider); }
+.glass .ic { width: 17rem; height: 17rem; }
+.q__title { display: grid; gap: 2rem; }
+.q__title b { font-size: 15rem; font-weight: 700; letter-spacing: -0.015em; line-height: 1.2; }
+.q__title span { font-size: 12rem; color: var(--faint); line-height: 1.2; }
+.timer { display: flex; align-items: center; gap: 6rem; padding: 8rem 10rem; border-radius: 10rem; background: var(--surface-subtle); font-size: 13rem; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.timer .ic { width: 13rem; height: 13rem; }
+.q__meta { margin-top: 16rem; }
+.q__body { margin-top: 8rem; min-height: 69rem; font-size: 16rem; font-weight: 500; line-height: 1.45; }
+.opts { list-style: none; display: grid; gap: 8rem; margin-top: 16rem; }
+.opt { display: flex; align-items: center; gap: 12rem; height: 46rem; padding: 0 14rem; border-radius: 16rem; background: var(--surface-subtle); border: 1rem solid transparent; }
+.opt .om { display: grid; place-items: center; width: 26rem; height: 26rem; flex: none; border-radius: 50%; box-shadow: inset 0 0 0 1rem var(--dot); font-size: 12rem; font-weight: 700; color: var(--faint); }
+.opt .ot { flex: 1; font-size: 15rem; color: var(--muted); }
+.opt .ov { width: 17rem; height: 17rem; stroke-width: 2.6; display: none; }
+.opt.picked .om { background: var(--text); color: var(--on-light); box-shadow: none; }
+.opt.picked .ot { color: var(--text); }
+.opt.right { border-color: rgba(95, 180, 138, 0.6); background: #18231F; }
+.opt.right .om { background: transparent; color: var(--pos); box-shadow: inset 0 0 0 1rem var(--pos); }
+.opt.right.picked .om { background: var(--pos); color: var(--on-light); }
+.opt.right .ov.ok { display: block; color: var(--pos); }
+.opt.wrong { border-color: rgba(212, 104, 94, 0.6); background: #261A1B; }
+.opt.wrong .om { background: var(--neg); color: var(--on-light); box-shadow: none; }
+.opt.wrong .ov.no { display: block; color: var(--neg); }
+.q__foot { display: grid; gap: 10rem; margin-top: 14rem; }
+.vd { display: flex; align-items: center; gap: 7rem; height: 20rem; font-size: 13.5rem; color: var(--muted); }
+.vd b { font-weight: 700; }
+.vd .ic { width: 15rem; height: 15rem; stroke-width: 2.6; }
+.vd.ok b, .vd.ok .ic { color: var(--pos); }
+.vd.no b, .vd.no .ic { color: var(--neg); }
+.math { font-family: "STIX Two Text", serif; font-size: 1.08em; white-space: nowrap; }
+.math sub, .math sup { font-size: 0.7em; }
+.frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; font-family: "STIX Two Text", serif; font-size: 1.04em; line-height: 1.1; }
+.frac > span:first-child { padding: 0 0.18em 0.06em; border-bottom: 1rem solid currentColor; }
+.frac > span:last-child { padding: 0.06em 0.18em 0; }
+
+.why { position: absolute; left: 0; right: 0; bottom: 0; padding: 20rem 18rem 18rem; border-radius: 22rem; background: var(--surface-strong); box-shadow: 0 -10rem 40rem -10rem rgba(0, 0, 0, 0.9); visibility: hidden; }
+.why__t { font-size: 17rem; font-weight: 700; letter-spacing: -0.02em; }
+.chips { display: flex; flex-wrap: wrap; gap: 8rem; margin-top: 14rem; }
+.chipx { display: inline-flex; align-items: center; gap: 7rem; height: 36rem; padding: 0 13rem; border-radius: 13rem; background: var(--surface-subtle); color: var(--muted); font-size: 13rem; font-weight: 600; white-space: nowrap; }
+.chipx .ic { width: 15rem; height: 15rem; }
+.chipx.on { background: var(--text); color: var(--on-light); }
+
+.side { position: relative; display: grid; width: 380rem; }
+.side > * { grid-area: 1 / 1; }
+.port .side { width: 360rem; justify-items: center; }
+.trace { width: 380rem; padding: 20rem; }
+.port .trace { display: none; }
+.trace__t { margin-top: 8rem; font-size: 18rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.3; }
+.chart { display: block; width: 100%; height: auto; margin-top: 14rem; overflow: visible; }
+.chart text { font-family: "Montserrat", sans-serif; font-weight: 600; font-size: 10.5px; fill: var(--faint); }
+.chart .edge { stroke: var(--divider); stroke-width: 1; }
+.chart .band { stroke: var(--divider); stroke-width: 1; stroke-dasharray: 3 5; }
+.chart .path { fill: none; stroke: var(--mark-partial); stroke-width: 2; stroke-linejoin: round; }
+.chart .dash { fill: none; stroke: var(--mark-partial); stroke-width: 2; stroke-dasharray: 4 5; }
+.chart .dot-r { fill: var(--pos); }
+.chart .dot-w { fill: var(--surface); stroke: var(--neg); stroke-width: 2.5; }
+.chart .ring { fill: none; stroke: var(--text); stroke-width: 2; }
+.chart circle { transform-box: fill-box; transform-origin: center; }
+.next { display: flex; align-items: center; gap: 7rem; margin-top: 14rem; padding-top: 14rem; border-top: 1rem solid var(--divider); font-size: 13.5rem; color: var(--muted); }
+.next b { color: var(--text); font-weight: 600; }
+.next .ic, .nextchip .ic { width: 15rem; height: 15rem; stroke-width: 2.4; color: var(--text); }
+.nextchip { display: none; align-items: center; gap: 8rem; height: 42rem; padding: 0 18rem; border-radius: 21rem; background: var(--surface-subtle); font-size: 14rem; color: var(--muted); align-self: center; }
+.nextchip b { color: var(--text); font-weight: 600; }
+.port .nextchip { display: flex; }
+.notebook { display: flex; align-items: center; gap: 14rem; width: 380rem; padding: 18rem; visibility: hidden; align-self: center; }
+.port .notebook { width: 360rem; }
+.tile { display: grid; place-items: center; width: 48rem; height: 48rem; flex: none; border-radius: 15rem; background: var(--surface-subtle); }
+.tile .ic { width: 22rem; height: 22rem; }
+.notebook__t { font-size: 16rem; font-weight: 700; letter-spacing: -0.015em; }
+.notebook__s { margin-top: 3rem; font-size: 13rem; color: var(--muted); }
+.notebook__n { margin-left: auto; font-size: 30rem; font-weight: 700; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+
+/* home */
+.home { display: grid; gap: 16rem; grid-template-columns: 340rem 360rem; grid-template-areas: "ready goal" "ready stats"; align-items: center; }
+.port .home { grid-template-columns: 360rem; grid-template-areas: "goal" "ready" "stats"; }
+.goal { grid-area: goal; padding: 15rem; align-self: end; }
+.ready { grid-area: ready; padding: 22rem; }
+.port .ready { width: 360rem; }
+.stats { grid-area: stats; display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; padding: 18rem 0; align-self: start; }
+.goal__head { display: flex; align-items: center; justify-content: space-between; }
+.goal__head > b { font-size: 16rem; font-weight: 700; letter-spacing: -0.02em; }
+.counts { display: flex; align-items: center; gap: 13rem; font-size: 13rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.counts small { font-size: 13rem; font-weight: 400; color: var(--faint); }
+.counts .ic { width: 15rem; height: 15rem; color: var(--faint); }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5rem; margin-top: 14rem; }
+.dbox { border-radius: 12rem; padding: 1.5rem; }
+.dbox.today { background: var(--ramp-diag); }
+.dbox > div { display: grid; justify-items: center; gap: 7rem; padding: 9rem 0; border-radius: 10.5rem; background: var(--surface-subtle); }
+.dbox.future > div { background: transparent; }
+.dbox.today > div { background: var(--surface-strong); }
+.dbox span.d { font-size: 11rem; font-weight: 600; color: var(--muted); line-height: 1.2; }
+.dbox.future span.d { font-weight: 400; color: var(--faint); }
+.dbox.today span.d { color: var(--text); }
+.gl { position: relative; display: grid; place-items: center; width: 26rem; height: 26rem; border-radius: 50%; }
+.gl-met { background: var(--text); color: var(--on-light); }
+.gl-met .ic { width: 16rem; height: 16rem; stroke-width: 3; }
+.gl-bang { font-size: 19rem; font-weight: 700; color: var(--mark-missed); line-height: 1; }
+.gl-future { box-shadow: inset 0 0 0 3rem var(--mark-future); }
+.gl svg.arc { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.gl .track { fill: none; stroke: var(--divider); stroke-width: 3.5; }
+.gl .fill { fill: none; stroke: var(--mark-today); stroke-width: 3.5; stroke-linecap: round; stroke-dasharray: 100; transform: rotate(-90deg); transform-origin: 13px 13px; }
+.gl .metdisc { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%; background: var(--text); color: var(--on-light); }
+.gl .metdisc .ic { width: 16rem; height: 16rem; stroke-width: 3; }
+.ready__t { font-size: 22rem; font-weight: 700; letter-spacing: -0.03em; }
+.ready__c { margin-top: 8rem; font-size: 13rem; line-height: 1.45; color: var(--muted); }
+.big { display: flex; align-items: baseline; gap: 5rem; margin-top: 20rem; }
+.big b { font-size: 40rem; font-weight: 700; letter-spacing: -0.035em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.big span { font-size: 13rem; color: var(--faint); }
+.meter { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4rem; margin-top: 12rem; }
+.meter i { position: relative; height: 10rem; overflow: hidden; border-radius: 5rem; background: var(--divider); }
+.meter i b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: inherit; background: var(--text); }
+.meta { display: flex; align-items: center; gap: 6rem; margin-top: 13rem; font-size: 12rem; color: var(--faint); }
+.meta .ic { width: 12rem; height: 12rem; }
+.meta .v { width: 1rem; height: 12rem; margin: 0 4rem; background: var(--divider); }
+.meta .delta { display: flex; align-items: center; gap: 6rem; color: var(--muted); }
+.stats > i { width: 1rem; align-self: stretch; margin: 2rem 0; background: var(--divider); }
+.stat { padding: 0 16rem; }
+.stat__v { display: flex; align-items: baseline; gap: 4rem; margin-top: 9rem; }
+.stat__v b { position: relative; display: inline-block; height: 32rem; overflow: hidden; font-size: 26rem; font-weight: 700; letter-spacing: -0.03em; line-height: 32rem; font-variant-numeric: tabular-nums; }
+.stat__v b span { display: block; }
+.stat__v small { font-size: 12rem; color: var(--muted); }
+
+/* mock */
+.mock { display: flex; align-items: flex-start; gap: 20rem; }
+.port .mock { flex-direction: column-reverse; align-items: center; gap: 16rem; }
+.result { width: 360rem; padding: 22rem; }
+.result__head { display: flex; align-items: center; justify-content: space-between; }
+.result__head b { font-size: 17rem; font-weight: 700; letter-spacing: -0.02em; }
+.tag { display: inline-flex; align-items: center; height: 24rem; padding: 0 10rem; border-radius: 9rem; background: var(--surface-subtle); font-size: 11.5rem; font-weight: 600; color: var(--muted); }
+.result .lbl { margin-top: 22rem; }
+.range { display: flex; align-items: baseline; gap: 6rem; margin-top: 8rem; }
+.range b { font-size: 44rem; font-weight: 700; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.range > span { font-size: 14rem; color: var(--faint); }
+.pct { margin-top: 8rem; font-size: 13.5rem; color: var(--muted); }
+.rule { height: 1rem; margin: 18rem 0 14rem; background: var(--divider); }
+.subhead { display: flex; justify-content: space-between; }
+.subj { display: grid; grid-template-columns: 78rem 1fr 74rem; align-items: center; gap: 12rem; margin-top: 12rem; }
+.subj span:first-child { font-size: 13rem; color: var(--muted); }
+.bar { height: 8rem; border-radius: 4rem; background: var(--divider); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: inherit; background: var(--text); }
+.subj em { display: flex; align-items: center; justify-content: flex-end; gap: 4rem; font-style: normal; font-size: 12rem; font-weight: 600; }
+.subj em.dim { color: var(--faint); }
+.subj em .ic { width: 12rem; height: 12rem; stroke-width: 2.6; }
+.marking { width: 190rem; padding: 18rem; margin-top: 24rem; }
+.port .marking { width: 360rem; margin-top: 0; display: flex; align-items: center; justify-content: space-between; }
+.marks { display: flex; gap: 18rem; margin-top: 10rem; }
+.port .marks { margin-top: 0; }
+.marks b { display: block; font-size: 22rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+.marks span { display: block; margin-top: 5rem; font-size: 11rem; color: var(--faint); }
+
+/* the finger */
+.tap { position: absolute; left: 0; top: 0; width: 44rem; height: 44rem; margin: -22rem 0 0 -22rem; border-radius: 50%; background: rgba(255, 255, 255, 0.2); box-shadow: 0 0 0 2rem rgba(255, 255, 255, 0.7); visibility: hidden; pointer-events: none; }
+.tap i { position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 2rem rgba(255, 255, 255, 0.55); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-alarm" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+  <symbol id="i-trend" viewBox="0 0 24 24"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></symbol>
+  <symbol id="i-chev-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-chev-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-timer" viewBox="0 0 24 24"><path d="M10 2h4"/><path d="M12 14l3-3"/><circle cx="12" cy="14" r="8"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol>
+  <symbol id="i-percent" viewBox="0 0 24 24"><path d="M19 5 5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></symbol>
+  <symbol id="i-timer2" viewBox="0 0 24 24"><path d="M10 2h4"/><path d="M12 14l3-3"/><circle cx="12" cy="14" r="8"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></symbol>
+  <symbol id="i-calc" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8"/><path d="M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h.01M12 19h.01M16 19h.01"/></symbol>
+  <symbol id="i-sigma" viewBox="0 0 24 24"><path d="M18 7V4H6l6 8-6 8h12v-3"/></symbol>
+</svg>
+
+<div class="frame" id="frame">
+
+  <!-- intro / outro -->
+  <div class="bigmark" id="bigmark"><span class="l"></span><span class="r"></span></div>
+  <div class="intro" id="intro">
+    <div class="intro__wm"><img id="wm" src="../public/wordmark.png" alt=""></div>
+    <p class="intro__tag" id="tag">Practice daily. Rank higher.</p>
+    <p class="intro__soon" id="soon">Launching soon on Android and iPhone</p>
+  </div>
+
+  <!-- alarm -->
+  <section class="scene" id="s-alarm">
+    <div class="card alarm" id="alarm">
+      <div class="alarm__app"><span class="mk"></span><b>HudJee</b><i class="sep"></i><span>now</span></div>
+      <div class="alarm__time"><b>6:30</b><span>AM</span></div>
+      <p class="alarm__title">Time for today’s practice</p>
+      <p class="alarm__body">Start now, snooze for 10 minutes, or dismiss it for today.</p>
+      <div class="alarm__acts">
+        <span class="btnx btnx--ramp" id="alarm-start">Start practising</span>
+        <div class="row2"><span class="btnx">Snooze 10 min</span><span class="btnx">Dismiss</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- practice -->
+  <section class="scene" id="s-practice">
+    <div class="practice">
+      <div class="qstack">
+        <div class="card qcard" id="q5">
+          <div class="q__top">
+            <span class="glass"><svg class="ic"><use href="#i-chev-left"/></svg></span>
+            <span class="q__title"><b>Rotational Motion</b><span>Physics</span></span>
+            <span class="timer"><svg class="ic"><use href="#i-timer"/></svg><span class="q__time">0:00</span></span>
+          </div>
+          <p class="lbl q__meta">Question 5<i class="sep"></i>Medium</p>
+          <p class="q__body">A solid sphere rolls without slipping on a level floor. What fraction of its kinetic energy is rotational?</p>
+          <ol class="opts">
+            <li class="opt"><span class="om">A</span><span class="ot"><span class="frac"><span>2</span><span>7</span></span></span><svg class="ic ov ok"><use href="#i-check"/></svg><svg class="ic ov no"><use href="#i-x"/></svg></li>
+            <li class="opt"><span class="om">B</span><span class="ot"><span class="frac"><span>2</span><span>5</span></span></span><svg class="ic ov ok"><use href="#i-check"/></svg><svg class="ic ov no"><use href="#i-x"/></svg></li>
+            <li class="opt"><span class="om">C</span><span class="ot"><span class="frac"><span>5</span><span>7</span></span></span><svg class="ic ov ok"><use href="#i-check"/></svg><svg class="ic ov no"><use href="#i-x"/></svg></li>
+            <li class="opt"><span class="om">D</span><span class="ot"><span class="frac"><span>1</span><span>2</span></span></span><svg class="ic ov ok"><use href="#i-check"/></svg><svg class="ic ov no"><use href="#i-x"/></svg></li>
+          </ol>
+          <div class="q__foot"><p class="vd"></p><span class="btnx btnx--ramp q__btn"><span>Check answer</span><svg class="ic"><use href="#i-arrow-right"/></svg></span></div>
+        </div>
+        <div class="card qcard" id="q6">
+          <div class="q__top">
+            <span class="glass"><svg class="ic"><use href="#i-chev-left"/></svg></span>
+            <span class="q__title"><b>Coordination Compounds</b><span>Chemistry</span></span>
+            <span class="timer"><svg class="ic"><use href="#i-timer"/></svg><span class="q__time">0:00</span></span>
+          </div>
+          <p class="lbl q__meta">Question 6<i class="sep"></i>Hard</p>
+          <p class="q__body">How many unpaired electrons does <span class="math">[Fe(CN)<sub>6</sub>]<sup>3−</sup></span> have?</p>
+          <ol class="opts">
+            <li class="opt"><span class="om">A</span><span class="ot">0</span><svg class="ic ov ok"><use href="#i-check"/></svg><svg class="ic ov no"><use href="#i-x"/></svg></li>
+            <li class="opt"><span class="om">B</span><span class="ot">1</span><svg class="ic ov ok"><use href="#i-check"/></svg><svg class="ic ov no"><use href="#i-x"/></svg></li>
+            <li class="opt"><span class="om">C</span><span class="ot">3</span><svg class="ic ov ok"><use href="#i-check"/></svg><svg class="ic ov no"><use href="#i-x"/></svg></li>
+            <li class="opt"><span class="om">D</span><span class="ot">5</span><svg class="ic ov ok"><use href="#i-check"/></svg><svg class="ic ov no"><use href="#i-x"/></svg></li>
+          </ol>
+          <div class="q__foot"><p class="vd"></p><span class="btnx btnx--ramp q__btn"><span>Check answer</span><svg class="ic"><use href="#i-arrow-right"/></svg></span></div>
+        </div>
+        <div class="why" id="why">
+          <p class="why__t">Why did you miss it?</p>
+          <div class="chips">
+            <span class="chipx"><svg class="ic"><use href="#i-timer2"/></svg>Time pressure</span>
+            <span class="chipx"><svg class="ic"><use href="#i-zap"/></svg>Silly mistake</span>
+            <span class="chipx" id="chip-formula"><svg class="ic"><use href="#i-sigma"/></svg>Forgot the formula</span>
+          </div>
+        </div>
+      </div>
+      <div class="side">
+        <div class="card trace" id="trace">
+          <p class="lbl">This session</p>
+          <p class="trace__t">Every answer sets the next question</p>
+          <svg class="chart" viewBox="0 0 344 200">
+            <line class="edge" x1="50" x2="340" y1="14" y2="14"/>
+            <line class="band" x1="50" x2="340" y1="60.3" y2="60.3"/>
+            <line class="band" x1="50" x2="340" y1="129.7" y2="129.7"/>
+            <line class="edge" x1="50" x2="340" y1="176" y2="176"/>
+            <text x="0" y="41">Hard</text><text x="0" y="99">Medium</text><text x="0" y="157">Easy</text>
+            <g id="xlabels"></g>
+            <path class="path" id="tpath" d=""/>
+            <path class="dash" id="tdash" d=""/>
+            <g id="tdots"></g>
+          </svg>
+          <p class="next" id="tnext"><svg class="ic"><use href="#i-arrow-up"/></svg><span>Next question: <b>harder</b></span></p>
+        </div>
+        <div class="nextchip" id="nextchip"><svg class="ic"><use href="#i-arrow-up"/></svg><span>Next question: <b>harder</b></span></div>
+        <div class="card notebook" id="notebook">
+          <span class="tile"><svg class="ic"><use href="#i-book"/></svg></span>
+          <div><p class="notebook__t">Mistake notebook</p><p class="notebook__s">Back for revision tomorrow</p></div>
+          <span class="notebook__n" id="nb-n">23</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- home -->
+  <section class="scene" id="s-home">
+    <div class="home">
+      <div class="card goal" id="goal">
+        <div class="goal__head"><b>Daily goal</b><span class="counts"><span><span id="g-q">18</span><small>/20 Qs</small></span><span><span id="g-m">26</span><small>/30 min</small></span><svg class="ic"><use href="#i-chev-right"/></svg></span></div>
+        <div class="week">
+          <div class="dbox"><div><span class="gl gl-met"><svg class="ic"><use href="#i-check"/></svg></span><span class="d">M</span></div></div>
+          <div class="dbox"><div><span class="gl gl-met"><svg class="ic"><use href="#i-check"/></svg></span><span class="d">T</span></div></div>
+          <div class="dbox"><div><span class="gl"><span class="gl-bang">!</span></span><span class="d">W</span></div></div>
+          <div class="dbox"><div><span class="gl gl-met"><svg class="ic"><use href="#i-check"/></svg></span><span class="d">T</span></div></div>
+          <div class="dbox today"><div><span class="gl" id="today"><svg class="arc" viewBox="0 0 26 26"><circle class="track" cx="13" cy="13" r="11.25"/><circle class="fill" id="today-fill" cx="13" cy="13" r="11.25" pathLength="100"/></svg><span class="metdisc" id="today-met"><svg class="ic"><use href="#i-check"/></svg></span></span><span class="d">F</span></div></div>
+          <div class="dbox future"><div><span class="gl gl-future"></span><span class="d">S</span></div></div>
+          <div class="dbox future"><div><span class="gl gl-future"></span><span class="d">S</span></div></div>
+        </div>
+      </div>
+      <div class="card ready" id="ready">
+        <p class="ready__t">Readiness score</p>
+        <p class="ready__c">On track — a little more each day</p>
+        <div class="big"><b id="r-v">59</b><span>/100</span></div>
+        <div class="meter" id="r-meter"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></div>
+        <div class="meta"><svg class="ic"><use href="#i-percent"/></svg><span>71% accuracy</span><i class="v"></i><span class="delta" id="r-delta"><svg class="ic"><use href="#i-trend"/></svg>5 this week</span></div>
+      </div>
+      <div class="card stats" id="stats">
+        <div class="stat"><p class="lbl">Streak</p><div class="stat__v"><b id="s-streak"><span>23</span><span>24</span></b><small>days</small></div></div><i></i>
+        <div class="stat"><p class="lbl">Solved</p><div class="stat__v"><b><span id="s-solved">18</span></b><small>Qs</small></div></div><i></i>
+        <div class="stat"><p class="lbl">Time</p><div class="stat__v"><b><span id="s-time">26</span></b><small>min</small></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- mock -->
+  <section class="scene" id="s-mock">
+    <div class="mock">
+      <div class="card result" id="result">
+        <div class="result__head"><b>Adaptive mock</b><span class="tag">Result</span></div>
+        <p class="lbl">Projected JEE Main score</p>
+        <div class="range"><b><span id="m-lo">0</span>–<span id="m-hi">0</span></b><span>/300</span></div>
+        <p class="pct" id="m-pct">About the 97th percentile</p>
+        <div class="rule"></div>
+        <div class="subhead"><span class="lbl" style="margin:0">Section 1</span><span class="lbl" style="margin:0">Section 2</span></div>
+        <div class="subj"><span>Physics</span><span class="bar"><i id="b1"></i></span><em id="e1"><svg class="ic"><use href="#i-arrow-up"/></svg>Harder</em></div>
+        <div class="subj"><span>Chemistry</span><span class="bar"><i id="b2"></i></span><em id="e2"><svg class="ic"><use href="#i-arrow-up"/></svg>Harder</em></div>
+        <div class="subj"><span>Maths</span><span class="bar"><i id="b3"></i></span><em class="dim" id="e3"><svg class="ic"><use href="#i-arrow-down"/></svg>Easier</em></div>
+      </div>
+      <div class="card marking" id="marking">
+        <p class="lbl">JEE Main marking</p>
+        <div class="marks"><div><b>+4</b><span>right</span></div><div><b>−1</b><span>wrong</span></div><div><b>0</b><span>blank</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- the agent pill and the finger sit over everything -->
+  <div class="pill" id="pill">
+    <span class="pill__av"><span class="mk"></span></span>
+    <span class="pill__txt"><b>HudJee</b><span class="pill__status" id="pill-status"><svg class="ic"><use id="pill-ic" href="#i-alarm"/></svg><span id="pill-text">6:30 AM · Practice time</span></span></span>
+  </div>
+  <div class="tap" id="tap"><i></i></div>
+</div>
+
+<script>
+(() => {
+  const P = new URLSearchParams(location.search);
+  const W = Number(P.get('w')) || 1920;
+  const H = Number(P.get('h')) || 1080;
+  const PORTRAIT = H > W;
+  const K = PORTRAIT ? 2.0 : 1.75;           // px per app point
+  const PILL_TOP = PORTRAIT ? 62 : 44;        // px
+  const DURATION = 42;
+  document.documentElement.style.fontSize = `${K}px`;
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const frame = $('#frame');
+  frame.style.width = `${W}px`;
+  frame.style.height = `${H}px`;
+  frame.classList.add(PORTRAIT ? 'port' : 'land');
+  const pill = $('#pill');
+  pill.style.top = `${PILL_TOP}px`;
+  const contentTop = PILL_TOP + 54 * K + (PORTRAIT ? 26 : 22);
+  $$('.scene').forEach((s) => { s.style.paddingTop = `${contentTop}px`; s.style.paddingBottom = `${PORTRAIT ? 40 : 30}px`; });
+
+  // ── easing ──────────────────────────────────────────────────────────────
+  function bez(x1, y1, x2, y2) {
+    const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx;
+    const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+    const sx = (t) => ((ax * t + bx) * t + cx) * t;
+    const sy = (t) => ((ay * t + by) * t + cy) * t;
+    return (x) => {
+      if (x <= 0) return 0;
+      if (x >= 1) return 1;
+      let lo = 0, hi = 1, t = x;
+      for (let i = 0; i < 40; i++) {
+        const v = sx(t);
+        if (Math.abs(v - x) < 1e-6) break;
+        if (v < x) lo = t; else hi = t;
+        t = (lo + hi) / 2;
+      }
+      return sy(t);
+    };
+  }
+  const EMPH = bez(0.05, 0.7, 0.1, 1);     // the splash's emphasised decelerate
+  const STD = bez(0.4, 0, 0.2, 1);
+  const ACC = bez(0.4, 0, 1, 1);
+  const OUT = (t) => 1 - Math.pow(1 - t, 3);
+  const BACK = (t) => { const c1 = 1.5, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+  const c01 = (v) => Math.max(0, Math.min(1, v));
+  const prog = (t, a, b, e = STD) => e(c01((t - a) / (b - a)));
+  const lerp = (a, b, p) => a + (b - a) * p;
+  function trk(t, keys) {
+    if (t <= keys[0][0]) return keys[0][1];
+    for (let i = 0; i < keys.length - 1; i++) {
+      const [t0, v0, e] = keys[i];
+      const [t1, v1] = keys[i + 1];
+      if (t <= t1) return lerp(v0, v1, (e || STD)((t - t0) / (t1 - t0)));
+    }
+    return keys[keys.length - 1][1];
+  }
+
+  // ── drawing helpers ─────────────────────────────────────────────────────
+  function put(el, { x = 0, y = 0, s = 1, o = 1 } = {}) {
+    el.style.transform = `translate(${(x * K).toFixed(2)}px, ${(y * K).toFixed(2)}px) scale(${s.toFixed(4)})`;
+    el.style.opacity = c01(o).toFixed(3);
+    el.style.visibility = o <= 0.003 ? 'hidden' : 'visible';
+  }
+  // In over `din`, out over `dout`, ending at b.
+  function life(t, a, b, { dx = 0, dy = 26, ox = 0, oy = -14, din = 0.75, dout = 0.45, s0 = 0.97, s1 = 0.98 } = {}) {
+    const pin = prog(t, a, a + din, EMPH);
+    const pout = prog(t, b - dout, b, ACC);
+    return {
+      o: Math.min(prog(t, a, a + din * 0.5, STD), 1 - prog(t, b - dout * 0.8, b, STD)),
+      x: lerp(dx, 0, pin) + lerp(0, ox, pout),
+      y: lerp(dy, 0, pin) + lerp(0, oy, pout),
+      s: lerp(s0, 1, pin) * lerp(1, s1, pout),
+    };
+  }
+  const text = (el, v) => { if (el.textContent !== String(v)) el.textContent = v; };
+  const html = (el, v) => { if (el.__h !== v) { el.innerHTML = v; el.__h = v; } };
+  const cls = (el, name, on) => el.classList.toggle(name, !!on);
+  const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const showScene = (el, t, a, b) => { el.style.display = t >= a && t <= b ? 'flex' : 'none'; };
+
+  // Laid-out positions, read once with every transform cleared.
+  const rect = (el) => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height }; };
+  let L = {};
+  function measure() {
+    $$('.scene').forEach((s) => { s.style.display = 'flex'; });
+    $$('[style*="transform"]').forEach((el) => { el.style.transform = ''; });
+    pill.style.visibility = 'visible';
+    L = {
+      avatar: rect($('.pill__av')),
+      q6: rect($('#q6')),
+      why: rect($('#why')),
+      notebook: rect($('#notebook')),
+    };
+    $('#why').style.transformOrigin = `50% ${(L.q6.y - (L.why.y - L.why.h / 2)).toFixed(1)}px`;
+    $$('.scene').forEach((s) => { s.style.display = 'none'; });
+  }
+
+  // ── the agent pill ──────────────────────────────────────────────────────
+  const STATUS = [
+    [3.8, 'alarm', '6:30 AM · Practice time'],
+    [7.7, 'target', 'Picking a question at your level'],
+    [12.8, 'check', 'Correct · the next one’s harder'],
+    [14.7, 'target', 'Stepping it up a level'],
+    [18.3, 'x', 'Not this time · the next one’s easier'],
+    [21.5, 'book', 'Saved to your mistake notebook'],
+    [23.7, 'target', 'Counting today’s practice'],
+    [26.5, 'check', 'Goal met · streak at 24 days'],
+    [31.7, 'trend', 'Marking your mock the JEE way'],
+  ];
+  const pillStatus = $('#pill-status'), pillText = $('#pill-text'), pillIc = $('#pill-ic');
+  const PILL_IN = [3.72, 4.25], PILL_OUT = [37.15, 37.55];
+  function drawPill(t) {
+    const visible = t >= PILL_IN[0] && t <= PILL_OUT[1];
+    pill.style.visibility = visible ? 'visible' : 'hidden';
+    if (!visible) return;
+    const open = Math.min(prog(t, PILL_IN[0] + 0.05, PILL_IN[1], EMPH), 1 - prog(t, PILL_OUT[0], PILL_OUT[1] - 0.05, STD));
+    const shut = (312 - 54) * (1 - open);
+    pill.style.clipPath = `inset(0 ${(shut * K).toFixed(2)}px 0 0 round ${(27 * K).toFixed(2)}px)`;
+    let i = 0;
+    for (let j = 0; j < STATUS.length; j++) if (t >= STATUS[j][0]) i = j;
+    const [ts, ic, label] = STATUS[i];
+    text(pillText, label);
+    pillIc.setAttribute('href', `#i-${ic}`);
+    const next = STATUS[i + 1];
+    const fin = i === 0 ? prog(t, PILL_IN[0] + 0.25, PILL_IN[1] + 0.15) : prog(t, ts, ts + 0.32);
+    const fout = next ? prog(t, next[0] - 0.2, next[0]) : prog(t, PILL_OUT[0] - 0.25, PILL_OUT[0]);
+    pillStatus.style.opacity = (fin * (1 - fout)).toFixed(3);
+    pillStatus.style.transform = `translateY(${((1 - fin) * 6 - fout * 6) * K}px)`;
+  }
+
+  // ── intro and outro: the mark unlocks, clicks shut, and becomes the pill's face ──
+  const bigmark = $('#bigmark'), intro = $('#intro'), wm = $('#wm'), tag = $('#tag'), soon = $('#soon');
+  const MARK_W = 150;
+  function drawIntroOutro(t) {
+    const homeX = W / 2, homeY = H / 2 - (PORTRAIT ? 90 : 70) * K;
+    const avX = L.avatar.x, avY = L.avatar.y;
+    const avScale = 21 / MARK_W;
+    let x = homeX, y = homeY, s = 1, o = 0, part = 0, pulse = 1;
+    if (t < 4) {
+      o = prog(t, 0, 0.35);
+      // BootSplash: hold, gather, part, click
+      pulse = trk(t, [[0, 1], [0.55, 1, bez(0.45, 0, 0.55, 1)], [0.71, 0.95, OUT], [1.09, 1, OUT], [1.18, 1.025], [1.32, 0.996], [1.45, 1]]);
+      part = trk(t, [[0, 0], [0.71, 0, OUT], [1.09, 1, bez(0.32, 0, 0.67, 0)], [1.22, -0.12], [1.34, 0.04], [1.46, 0]]);
+      const fly = prog(t, 3.05, 3.78, EMPH);
+      x = lerp(homeX, avX, fly);
+      y = lerp(homeY, avY, fly);
+      s = lerp(1, avScale, fly);
+      if (t > 3.78) o = 0;
+    } else if (t >= 37.5) {
+      o = t < 37.55 ? 0 : 1 - prog(t, 41.15, 41.85);
+      const fly = prog(t, 37.55, 38.3, EMPH);
+      x = lerp(avX, homeX, fly);
+      y = lerp(avY, homeY, fly);
+      s = lerp(avScale, 1, fly) * trk(t, [[38.25, 1], [38.36, 1.025], [38.52, 0.996], [38.66, 1]]);
+      part = trk(t, [[38.1, 0], [38.28, 0.55, OUT], [38.42, -0.08], [38.56, 0]]);
+    }
+    bigmark.style.visibility = o > 0.003 ? 'visible' : 'hidden';
+    if (o > 0.003) {
+      const wpx = MARK_W * K;
+      bigmark.style.width = `${wpx}px`;
+      bigmark.style.transform = `translate(${(x - wpx / 2).toFixed(2)}px, ${(y - wpx * 300 / 297 / 2).toFixed(2)}px) scale(${(s * pulse).toFixed(4)})`;
+      bigmark.style.opacity = o.toFixed(3);
+      const k = (MARK_W * 0.953) / 119.5;     // BootSplash moves the strokes 8pt and 5pt on a 119.5pt mark
+      const dx = -5.02 * k * part * K, dy = 7.99 * k * part * K;
+      bigmark.querySelector('.l').style.transform = `translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px)`;
+      bigmark.querySelector('.r').style.transform = `translate(${(-dx).toFixed(2)}px, ${(-dy).toFixed(2)}px)`;
+    }
+
+    // the words under it
+    intro.style.top = `${homeY + (MARK_W * 300 / 297 / 2 + 30) * K}px`;
+    let wmRise, tagO, tagY, soonO, soonY, all;
+    if (t < 4) {
+      wmRise = prog(t, 1.1, 1.66, EMPH);
+      tagO = prog(t, 1.25, 1.75); tagY = (1 - prog(t, 1.25, 1.85, EMPH)) * 10;
+      soonO = 0; soonY = 0;
+      all = 1 - prog(t, 2.85, 3.2);
+      tagY -= prog(t, 2.85, 3.2, ACC) * 8;
+    } else {
+      wmRise = prog(t, 38.2, 38.75, EMPH);
+      tagO = prog(t, 38.4, 38.9); tagY = (1 - prog(t, 38.4, 39, EMPH)) * 10;
+      soonO = prog(t, 38.62, 39.15); soonY = (1 - prog(t, 38.62, 39.25, EMPH)) * 10;
+      all = 1 - prog(t, 41.15, 41.85);
+    }
+    intro.style.visibility = (t < 3.3 || t > 38.1) ? 'visible' : 'hidden';
+    intro.style.opacity = all.toFixed(3);
+    wm.style.transform = `translateY(${((1 - wmRise) * 40 * K).toFixed(2)}px)`;
+    tag.style.opacity = tagO.toFixed(3);
+    tag.style.transform = `translateY(${(tagY * K).toFixed(2)}px)`;
+    soon.style.opacity = soonO.toFixed(3);
+    soon.style.transform = `translateY(${(soonY * K).toFixed(2)}px)`;
+  }
+
+  // ── the finger ──────────────────────────────────────────────────────────
+  const tap = $('#tap'), tapRing = tap.querySelector('i');
+  // [appears, presses, target]
+  const TAPS = [
+    [6.5, 6.78, () => $('#alarm-start')],
+    [11.45, 11.7, () => $$('#q5 .opt')[0]],
+    [12.25, 12.45, () => $('#q5 .q__btn')],
+    [17.1, 17.32, () => $$('#q6 .opt')[3]],
+    [17.8, 17.98, () => $('#q6 .q__btn')],
+    [20.38, 20.6, () => $('#chip-formula')],
+  ];
+  function drawTap(t) {
+    const hit = TAPS.find(([a, p]) => t >= a && t <= p + 0.55);
+    if (!hit) { tap.style.visibility = 'hidden'; return; }
+    const [a, p, target] = hit;
+    const r = target().getBoundingClientRect();
+    const cx = r.left + r.width * (r.width > 200 * K ? 0.62 : 0.5), cy = r.top + r.height / 2;
+    const appear = prog(t, a, a + 0.16, OUT);
+    const press = trk(t, [[p, 1], [p + 0.1, 0.86], [p + 0.24, 1]]);
+    const gone = prog(t, p + 0.3, p + 0.55);
+    tap.style.visibility = 'visible';
+    tap.style.left = `${cx}px`;
+    tap.style.top = `${cy}px`;
+    tap.style.opacity = (appear * (1 - gone)).toFixed(3);
+    tap.style.transform = `scale(${(lerp(0.6, 1, appear) * press).toFixed(4)})`;
+    const rip = prog(t, p, p + 0.5, OUT);
+    tapRing.style.transform = `scale(${lerp(1, 2.1, rip).toFixed(4)})`;
+    tapRing.style.opacity = (t >= p ? 1 - rip : 0).toFixed(3);
+  }
+  // a pressed control gives a little, as PressableScale does
+  const pressed = (t, p) => trk(t, [[p, 1], [p + 0.1, 0.97], [p + 0.24, 1]]);
+
+  // ── alarm ───────────────────────────────────────────────────────────────
+  const sAlarm = $('#s-alarm'), alarm = $('#alarm'), alarmStart = $('#alarm-start');
+  function drawAlarm(t) {
+    showScene(sAlarm, t, 3.95, 8.3);
+    if (t < 3.95 || t > 8.3) return;
+    put(alarm, life(t, 4.0, 8.15, { dy: 70, din: 0.85, oy: -30, dout: 0.55, s1: 0.95 }));
+    alarmStart.style.transform = `scale(${pressed(t, 6.78).toFixed(4)})`;
+  }
+
+  // ── practice ────────────────────────────────────────────────────────────
+  const sPractice = $('#s-practice');
+  const q5 = $('#q5'), q6 = $('#q6'), why = $('#why'), trace = $('#trace'), nextchip = $('#nextchip'), notebook = $('#notebook');
+  const QUESTIONS = [
+    { el: q5, enter: 7.95, leave: 14.75, time: 54, clock: [8.9, 12.1], pick: 0, correct: 0, picked: 11.75, press: 12.45, verdict: 12.8 },
+    { el: q6, enter: 14.5, leave: 99, time: 66, clock: [15.3, 17.55], pick: 3, correct: 1, picked: 17.36, press: 17.98, verdict: 18.3 },
+  ];
+  const TRACE = [{ d: 0.32, ok: true }, { d: 0.41, ok: true }, { d: 0.52, ok: false }, { d: 0.45, ok: true }];
+  const xOf = (i) => 56 + i * ((336 - 56) / 7);
+  const yOf = (d) => 176 - ((d - 0.2) / 0.7) * 162;
+  $('#xlabels').innerHTML = Array.from({ length: 8 }, (_, i) => `<text x="${xOf(i).toFixed(1)}" y="196" text-anchor="middle">Q${i + 1}</text>`).join('');
+
+  function drawQuestion(t, q, i) {
+    const { el } = q;
+    if (i === 0) put(el, life(t, q.enter, q.leave, { dy: 40, din: 0.8, ox: -70, oy: 0, dout: 0.55 }));
+    else {
+      // q6 enters from the right, then shrinks into the notebook
+      const base = life(t, q.enter, 99, { dx: 70, dy: 0, din: 0.8 });
+      const fly = prog(t, 21.55, 22.35, bez(0.5, 0, 0.2, 1));
+      const nx = (L.notebook.x - L.q6.x) / K, ny = (L.notebook.y - L.q6.y) / K;
+      const end = 1 - prog(t, 22.1, 22.35);
+      const fade = 1 - prog(t, 23.0, 23.5);
+      put(el, { x: base.x + nx * fly, y: base.y + ny * fly, s: base.s * lerp(1, 0.14, fly), o: base.o * end * fade });
+      put(why, { x: nx * fly, y: lerp(70, 0, prog(t, 19.4, 20.05, EMPH)) + ny * fly, s: lerp(1, 0.14, fly), o: prog(t, 19.4, 19.75) * end });
+    }
+    if (t < q.enter - 0.05 || t > q.leave + 0.05) return;
+    // options settle in sequence, like the app's enter()
+    $$('.opt', el).forEach((opt, k) => {
+      const p = prog(t, q.enter + 0.35 + k * 0.07, q.enter + 0.95 + k * 0.07, EMPH);
+      opt.style.transform = `translateY(${((1 - p) * 12 * K).toFixed(2)}px)`;
+      opt.style.opacity = prog(t, q.enter + 0.35 + k * 0.07, q.enter + 0.7 + k * 0.07).toFixed(3);
+      cls(opt, 'picked', t >= q.picked && k === q.pick);
+      cls(opt, 'right', t >= q.verdict && k === q.correct);
+      cls(opt, 'wrong', t >= q.verdict && k === q.pick && q.pick !== q.correct);
+    });
+    const secs = t < q.verdict ? q.time * prog(t, q.clock[0], q.clock[1], bez(0.3, 0.1, 0.7, 0.9)) : q.time;
+    text($('.q__time', el), clock(secs));
+    const btn = $('.q__btn', el);
+    btn.style.transform = `scale(${pressed(t, q.press).toFixed(4)})`;
+    text(btn.querySelector('span'), t >= q.verdict ? 'Next question' : 'Check answer');
+    const vd = $('.vd', el);
+    if (t >= q.verdict) {
+      const ok = q.pick === q.correct;
+      vd.className = `vd ${ok ? 'ok' : 'no'}`;
+      html(vd, ok ? `<svg class="ic"><use href="#i-check"/></svg><b>Correct</b> in ${clock(q.time)}` : `<svg class="ic"><use href="#i-x"/></svg><b>Not quite.</b> The answer is B.`);
+      vd.style.opacity = prog(t, q.verdict, q.verdict + 0.25).toFixed(3);
+    } else {
+      vd.className = 'vd';
+      html(vd, '');
+    }
+  }
+
+  function drawTrace(t) {
+    if (PORTRAIT) {
+      // the same story in one line under the card
+      const o = Math.min(prog(t, 12.95, 13.3), 1 - prog(t, 20.85, 21.2));
+      put(nextchip, { o, y: (1 - prog(t, 12.95, 13.6, EMPH)) * 10 });
+      const easier = t >= 18.45;
+      html(nextchip.querySelector('span'), `Next question: <b>${easier ? 'easier' : 'harder'}</b>`);
+      nextchip.querySelector('svg').style.transform = `rotate(${180 * prog(t, 18.45, 18.85, EMPH)}deg)`;
+      return;
+    }
+    put(trace, life(t, 8.15, 21.4, { dx: 50, dy: 0, din: 0.85, dout: 0.45, oy: 0, ox: 20 }));
+    const done = TRACE.slice();
+    if (t >= 12.8) done.push({ d: 0.56, ok: true, at: 12.8 });
+    if (t >= 18.3) done.push({ d: 0.70, ok: false, at: 18.3 });
+    const pending = t < 12.8 ? 0.56 : t < 14.75 ? null : t < 18.3 ? 0.70 : t >= 18.55 ? 0.62 : null;
+    const pts = done.map((p, i) => [xOf(i), yOf(p.d)]);
+    const step = (list) => list.map(([x, y], i) => (i ? `H${x.toFixed(1)} V${y.toFixed(1)}` : `M${x.toFixed(1)} ${y.toFixed(1)}`)).join(' ');
+    $('#tpath').setAttribute('d', step(pts));
+    $('#tdash').setAttribute('d', pending != null ? step([pts[pts.length - 1], [xOf(done.length), yOf(pending)]]) : '');
+    const dots = done.map((p, i) => {
+      const s = p.at ? BACK(c01((t - p.at) / 0.4)) : 1;
+      return `<circle class="${p.ok ? 'dot-r' : 'dot-w'}" cx="${pts[i][0].toFixed(1)}" cy="${pts[i][1].toFixed(1)}" r="${p.ok ? 6 : 5.5}" style="transform: scale(${s.toFixed(3)})"/>`;
+    }).join('');
+    const ringS = 1 + 0.18 * Math.sin(t * 5);
+    const ring = pending != null ? `<circle class="ring" cx="${xOf(done.length).toFixed(1)}" cy="${yOf(pending).toFixed(1)}" r="8" style="transform: scale(${ringS.toFixed(3)})"/>` : '';
+    $('#tdots').innerHTML = dots + ring;
+    const tnext = $('#tnext');
+    const easier = t >= 18.45;
+    tnext.style.opacity = prog(t, 12.95, 13.3).toFixed(3);
+    html(tnext.querySelector('span'), `Next question: <b>${easier ? 'easier' : 'harder'}</b>`);
+    tnext.querySelector('svg').style.transform = `rotate(${180 * prog(t, 18.45, 18.85, EMPH)}deg)`;
+  }
+
+  function drawPractice(t) {
+    showScene(sPractice, t, 7.9, 23.6);
+    if (t < 7.9 || t > 23.6) return;
+    QUESTIONS.forEach((q, i) => drawQuestion(t, q, i));
+    drawTrace(t);
+    $('#chip-formula').classList.toggle('on', t >= 20.64);
+    $('#chip-formula').style.transform = `scale(${pressed(t, 20.6).toFixed(4)})`;
+    const nb = Math.min(prog(t, 21.2, 21.65), 1 - prog(t, 23.0, 23.5));
+    put(notebook, { o: nb, y: (1 - prog(t, 21.2, 21.9, EMPH)) * 16 + prog(t, 23.0, 23.5, ACC) * -10 });
+    const n = $('#nb-n');
+    text(n, t >= 22.32 ? 24 : 23);
+    n.style.display = 'inline-block';
+    n.style.transform = `scale(${t >= 22.32 ? trk(t, [[22.32, 1.3], [22.65, 1, OUT]]).toFixed(3) : 1})`;
+  }
+
+  // ── home ────────────────────────────────────────────────────────────────
+  const sHome = $('#s-home'), goal = $('#goal'), ready = $('#ready'), stats = $('#stats');
+  // The old number leaves upward as the new one rises into place.
+  function roll(box, t, at) {
+    const p = prog(t, at, at + 0.4, EMPH);
+    $$('span', box).forEach((s) => { s.style.transform = `translateY(${(-p * 32 * K).toFixed(2)}px)`; });
+  }
+  function drawHome(t) {
+    showScene(sHome, t, 23.55, 31.6);
+    if (t < 23.55 || t > 31.6) return;
+    put(goal, life(t, 23.6, 31.5, { dy: 30, dout: 0.5 }));
+    put(ready, life(t, 23.75, 31.45, { dy: 30, dout: 0.5 }));
+    put(stats, life(t, 23.9, 31.4, { dy: 30, dout: 0.5 }));
+    const fill = prog(t, 24.9, 26.2, STD);
+    $('#today-fill').style.strokeDashoffset = (100 - lerp(85, 100, fill)).toFixed(2);
+    const met = $('#today-met');
+    met.style.opacity = prog(t, 26.25, 26.4).toFixed(3);
+    met.style.transform = `scale(${t >= 26.25 ? BACK(c01((t - 26.25) / 0.4)).toFixed(3) : 0.4})`;
+    text($('#g-q'), Math.round(lerp(18, 20, fill)));
+    text($('#g-m'), Math.round(lerp(26, 30, fill)));
+    text($('#s-solved'), Math.round(lerp(18, 20, fill)));
+    text($('#s-time'), Math.round(lerp(26, 30, fill)));
+    roll($('#s-streak'), t, 26.5);
+    const r = lerp(59, 64, prog(t, 26.7, 28.1, OUT));
+    text($('#r-v'), Math.round(r));
+    $$('#r-meter i b').forEach((b, i) => { b.style.width = `${(c01((r - i * 10) / 10) * 100).toFixed(1)}%`; });
+    const delta = $('#r-delta');
+    delta.style.opacity = prog(t, 27.9, 28.3).toFixed(3);
+  }
+
+  // ── mock ────────────────────────────────────────────────────────────────
+  const sMock = $('#s-mock'), result = $('#result'), marking = $('#marking');
+  function drawMock(t) {
+    showScene(sMock, t, 31.6, 37.35);
+    if (t < 31.6 || t > 37.35) return;
+    put(result, life(t, 31.65, 37.25, { dy: 30, dout: 0.5 }));
+    put(marking, life(t, 31.95, 37.15, PORTRAIT ? { dy: 20, dout: 0.5 } : { dx: 30, dy: 0, dout: 0.5 }));
+    const c = prog(t, 32.3, 33.7, OUT);
+    text($('#m-lo'), Math.round(96 * c));
+    text($('#m-hi'), Math.round(112 * c));
+    $('#m-pct').style.opacity = prog(t, 33.6, 34).toFixed(3);
+    [[74, 34.0], [63, 34.12], [38, 34.24]].forEach(([w, a], i) => {
+      $(`#b${i + 1}`).style.width = `${(w * prog(t, a, a + 0.8, EMPH)).toFixed(1)}%`;
+      $(`#e${i + 1}`).style.opacity = prog(t, a + 0.6, a + 0.9).toFixed(3);
+    });
+  }
+
+  // ── the frame at time t ─────────────────────────────────────────────────
+  function seek(t) {
+    t = Math.max(0, Math.min(DURATION, t));
+    drawIntroOutro(t);
+    drawAlarm(t);
+    drawPractice(t);
+    drawHome(t);
+    drawMock(t);
+    drawPill(t);
+    drawTap(t);
+  }
+
+  const whenReady = (async () => {
+    await document.fonts.ready;
+    await Promise.all(['400 15px Montserrat', '700 15px Montserrat', '16px "STIX Two Text"'].map((f) => document.fonts.load(f)));
+    await Promise.all(Array.from(document.images).map((img) => (img.complete ? null : new Promise((r) => { img.onload = img.onerror = r; }))));
+    measure();
+    seek(0);
+    return { w: W, h: H, duration: DURATION };
+  })();
+  window.FILM = { duration: DURATION, fps: 30, seek, ready: whenReady };
+})();
+</script>
+</body>
+</html>
