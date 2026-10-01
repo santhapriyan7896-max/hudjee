@@ -154,7 +154,46 @@ img { display: block; max-width: 100%; }
   display: block; width: 28px; visibility: hidden;
 }
 .nav.show-mark .nav__mark { visibility: visible; }
-@media (max-width: 420px) { .nav__cta-more { display: none; } }
+
+/* ─── section rail: a tick per section on the right edge, arrows to step ─── */
+
+main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
+.rail {
+  position: fixed; z-index: 30; right: clamp(6px, 1.2vw, 20px); top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.rail[hidden] { display: none; }
+.rail__list { display: flex; flex-direction: column; align-items: flex-end; margin: 0; padding: 0; list-style: none; }
+.rail__tick {
+  position: relative; display: flex; align-items: center; justify-content: flex-end;
+  width: 32px; height: 16px; padding: 0 6px; border: 0; background: none; cursor: pointer;
+}
+.rail__tick::after {
+  content: ""; width: 12px; height: 2px; border-radius: 2px; background: var(--dot);
+  transition: width 0.25s var(--ease-std), background-color 0.25s var(--ease-std);
+}
+.rail__tick:hover::after { background: var(--text-muted); width: 16px; }
+.rail__tick[aria-current="true"]::after { background: var(--text); width: 20px; }
+/* the section's name, shown beside its tick on hover or keyboard focus */
+.rail__tick span {
+  position: absolute; right: calc(100% + 4px); top: 50%; transform: translate(6px, -50%);
+  padding: 5px 10px; border-radius: 8px; white-space: nowrap;
+  background: var(--surface-strong); color: var(--text); font: 600 12.5px/1.2 var(--font);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  opacity: 0; pointer-events: none; transition: opacity 0.18s, transform 0.18s var(--ease-std);
+}
+.rail__tick:hover span, .rail__tick:focus-visible span { opacity: 1; transform: translate(0, -50%); }
+.rail__tick:focus-visible { outline-offset: -2px; }
+.rail__arrow {
+  display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--text-faint); cursor: pointer;
+  transition: color 0.2s, background-color 0.2s, opacity 0.2s;
+}
+.rail__arrow:hover { color: var(--text); background: var(--surface-strong); }
+.rail__arrow .ic { font-size: 16px; stroke-width: 2.4; }
+.rail__arrow:disabled { opacity: 0.3; cursor: default; background: transparent; color: var(--text-faint); }
+/* phones: thumbs scroll fine, and the edge belongs to the content */
+@media (max-width: 719px) { .rail { display: none !important; } }
 
 /* ─── the mark: splash-icon.png, cut at the gap between its strokes ───────── */
 
@@ -168,9 +207,11 @@ img { display: block; max-width: 100%; }
 /* ─── hero ────────────────────────────────────────────────────────────────── */
 
 .hero {
-  display: grid; justify-items: center; text-align: center;
+  display: grid; justify-items: center; align-content: center; text-align: center;
+  min-height: calc(100vh - 64px);
+  min-height: calc(100svh - 64px);   /* the screen as first shown, under the nav */
   padding-inline: var(--gutter);
-  padding-block: clamp(40px, 8vh, 96px) clamp(36px, 5vh, 56px);
+  padding-block: 32px;
 }
 .hero .mark { width: clamp(64px, 7vw, 88px); cursor: pointer; }
 /* Carries the hero mark up into the nav's centre as the page scrolls (see the script). */
@@ -200,9 +241,13 @@ img { display: block; max-width: 100%; }
 }
 
 /* the small objects that close each phrase, drawn from the app's own marks */
-.obj { display: inline-flex; align-items: center; vertical-align: -0.04em; margin-left: 0.12em; }
+/* Centred on the capitals beside them (Montserrat's cap height is 0.7em). Clipping
+   makes the box's bottom edge its baseline, so the small text inside a chip can't
+   drag it down onto the line's baseline. */
+.obj { --oh: 0.8em; overflow: hidden; vertical-align: calc(0.35em - var(--oh) / 2); margin-left: 0.12em; }
+.obj:has(.o-disc) { --oh: 0.64em; }
 .o-chip {
-  display: inline-flex; align-items: center; gap: 0.1em;
+  display: flex; align-items: center; gap: 0.1em;
   height: 0.8em; padding: 0 0.17em; border-radius: 0.22em;
   background: var(--surface-subtle);
 }
@@ -215,8 +260,7 @@ img { display: block; max-width: 100%; }
 .o-wrong { background: var(--negative); }
 .o-met { background: var(--text); }
 
-.hero__cta { margin-top: clamp(28px, 4.5vh, 40px); width: 100%; max-width: 420px; }
-.hero__more { margin-top: clamp(36px, 6vh, 64px); }
+.hero__more { margin-top: clamp(48px, 13vh, 140px); }
 
 /* ─── pre-registration ────────────────────────────────────────────────────── */
 
@@ -278,7 +322,7 @@ img { display: block; max-width: 100%; }
 .band {
   background: var(--bg);
   padding-inline: var(--gutter);
-  padding-block: clamp(72px, 10vw, 132px);
+  padding-block: clamp(72px, min(10vw, 14vh), 132px);
   --panel: var(--surface); --panel-2: var(--surface-subtle); --panel-3: var(--surface-strong);
 }
 .band--raised {
@@ -292,9 +336,10 @@ img { display: block; max-width: 100%; }
 /* ─── the film ────────────────────────────────────────────────────────────── */
 
 .stage {
-  position: relative; max-width: 1080px; margin: clamp(40px, 6vw, 64px) auto 0;
+  position: relative; max-width: max(320px, min(1080px, (100vh - 150px) * 16 / 9)); margin: clamp(40px, 6vw, 64px) auto 0;
   aspect-ratio: 16 / 9; overflow: hidden; border-radius: 28px; background: var(--bg);
-  transform-origin: 50% 30%; will-change: transform;
+  transform-origin: 50% 50%; will-change: transform;
+  box-shadow: 0 0 0 1px var(--divider);
 }
 .film { display: block; width: 100%; height: 100%; object-fit: cover; background: var(--bg); cursor: pointer; }
 .film__bar {
@@ -337,7 +382,7 @@ img { display: block; max-width: 100%; }
 .copy p { font-size: clamp(16px, 0.95rem + 0.2vw, 17.5px); line-height: 1.68; color: var(--text-muted); }
 
 /* Each illustration is a 48-unit square; 1em is one unit, so it scales as one piece. */
-.vis { position: relative; width: 100%; max-width: 520px; aspect-ratio: 1; justify-self: center; container-type: inline-size; }
+.vis { position: relative; width: 100%; max-width: max(280px, min(520px, 70vh)); aspect-ratio: 1; justify-self: center; container-type: inline-size; }
 .art { position: absolute; inset: 0; font-size: 10px; font-size: calc(100cqw / 48); line-height: 1.35; text-align: left; color: var(--text); }
 .p {
   --p-bg: var(--panel); --p-in: var(--panel-2);
@@ -488,25 +533,110 @@ img { display: block; max-width: 100%; }
 .faq { border-top: 1px solid var(--divider); }
 .faq:last-child { border-bottom: 1px solid var(--divider); }
 .faq summary {
-  display: grid; grid-template-columns: 40px minmax(0, 1fr) 20px; align-items: start; gap: 16px;
+  display: grid; grid-template-columns: minmax(0, 1fr) 20px; align-items: start; gap: 16px;
   padding: 22px 0; cursor: pointer; list-style: none;
 }
 .faq summary::-webkit-details-marker { display: none; }
 .faq summary:focus-visible { outline-offset: 4px; border-radius: 10px; }
-.faq__ic { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--surface-subtle); color: var(--text); }
-.faq__ic .ic { font-size: 18px; }
 .faq__t { display: block; font-size: 17px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.35; }
 .faq__d { display: block; margin-top: 4px; font-size: 14.5px; line-height: 1.55; color: var(--text-muted); }
 .faq__chev { margin-top: 10px; font-size: 20px; color: var(--text-faint); transition: transform 0.3s var(--ease-std); }
 .faq[open] .faq__chev { transform: rotate(180deg); color: var(--text); }
 .faq::details-content { height: 0; overflow: clip; transition: height 0.35s var(--ease-std), content-visibility 0.35s allow-discrete; }
 .faq[open]::details-content { height: auto; }
-.faq__body { padding: 0 36px 24px 56px; font-size: 15.5px; line-height: 1.7; color: var(--text-muted); }
+.faq__body { padding: 0 36px 24px 0; font-size: 15.5px; line-height: 1.7; color: var(--text-muted); }
 
 /* ─── closing call + footer ───────────────────────────────────────────────── */
 
-.cta { display: grid; justify-items: center; gap: 16px; text-align: center; padding-block: clamp(56px, 7vw, 104px) clamp(96px, 12vw, 160px); }
-.foot { border-top: 1px solid var(--divider); padding-inline: var(--gutter); }
+.cta { display: grid; justify-items: center; gap: 16px; text-align: center; padding-block: clamp(56px, 7vw, 104px) clamp(36px, 5vw, 64px); }
+.foot { padding-inline: var(--gutter); }
+
+/* ─── the finale: the closing form, then the footer's day-box strip ─── */
+
+@property --spin { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@keyframes spin { to { --spin: 360deg; } }
+@keyframes breathe { 50% { opacity: 0.45; } }
+
+.cta.finale { grid-template-columns: minmax(0, 1fr); }
+.finale__in { display: grid; justify-items: center; gap: 16px; width: 100%; min-width: 0; }
+/* "HudJee" set in day boxes, the way the app marks a streak: drawn by the script */
+.foot__art { display: block; width: 100%; max-width: var(--maxw); margin: 0 auto; }
+.finale .h2 { font-size: clamp(32px, 1.2rem + 2.6vw, 56px); }
+.finale .lead { max-width: 30em; }
+
+/* a day box: the app's mark for a day of practice */
+.day {
+  --s: 12px;
+  display: inline-grid; place-items: center; flex: none; width: var(--s); height: var(--s); border-radius: calc(var(--s) * 0.28);
+  background: linear-gradient(var(--bg), var(--bg)) padding-box, var(--ramp-diag) border-box;
+  border: 1.5px solid transparent;
+}
+.day--today { animation: breathe 2.4s ease-in-out infinite; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 10px; margin-bottom: 4px;
+  padding: 7px 14px 7px 10px; border-radius: 999px;
+  background: rgba(19, 19, 23, 0.82); box-shadow: inset 0 0 0 1px var(--divider);
+  font-size: 13px; font-weight: 600; color: var(--text-muted);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+
+.finale .cta__form { max-width: 520px; margin-top: 14px; }
+
+/* the join bar: one field, one button; a ramp runs round it while you type */
+.join {
+  position: relative; display: flex; align-items: center; gap: 6px;
+  padding: 7px 7px 7px 16px; border-radius: 20px;
+  background: rgba(19, 19, 23, 0.92); box-shadow: inset 0 0 0 1px var(--divider), 0 30px 80px -30px rgba(0, 0, 0, 0.9);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  transition: background-color 0.2s;
+}
+.join:hover { background: rgba(27, 27, 32, 0.94); }
+.join::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--spin), var(--ramp-a), var(--ramp-b), var(--ramp-c), var(--ramp-b), var(--ramp-a));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  opacity: 0; transition: opacity 0.3s var(--ease-std);
+}
+.join:focus-within::before { opacity: 1; animation: spin 5s linear infinite; }
+.join:has([aria-invalid="true"])::before { opacity: 1; animation: none; background: var(--negative); }
+.join__day { --s: 16px; }
+.join__day .ic { font-size: 10px; stroke-width: 3.4; color: var(--on-light); opacity: 0; transform: scale(0.4); transition: opacity 0.2s, transform 0.3s var(--ease-emph); }
+/* the box fills when the address looks right, and ticks once you're registered */
+.reg.is-ready .join__day, .reg.is-done .join__day { background: linear-gradient(var(--text), var(--text)) padding-box, var(--ramp-diag) border-box; }
+.reg.is-done .join__day .ic { opacity: 1; transform: none; }
+.join__input {
+  flex: 1; width: 0; min-width: 0; height: 50px; padding: 0 6px; border: 0; background: transparent;
+  color: var(--text); font: 500 17px/1 var(--font); letter-spacing: -0.01em;
+}
+.join__input::placeholder { color: var(--text-faint); opacity: 1; }
+.join__input:focus { outline: none; }
+.join__go {
+  flex: none; width: auto; min-height: 0;
+  display: inline-flex; align-items: center; gap: 8px; height: 50px; padding: 0 20px; border: 0; border-radius: 14px;
+  background: var(--text); color: var(--on-light); font: 700 15px/1 var(--font); letter-spacing: -0.012em;
+  cursor: pointer; white-space: nowrap; transition: background-color 0.2s, transform 0.18s var(--ease-std);
+}
+.join__go:hover { background: var(--mark-today); }
+.join__go:active { transform: scale(0.97); }
+.join__go .ic { font-size: 16px; stroke-width: 2.4; transition: transform 0.25s var(--ease-emph); }
+.join__go:hover .ic { transform: translateX(3px); }
+.join__go:disabled { opacity: 0.7; cursor: progress; }
+.finale .reg__error { text-align: center; }
+.finale .fine a { color: var(--text-muted); }
+.finale .fine a:hover { color: var(--text); }
+/* the follow-up cards float over the field too */
+.finale .reg__card {
+  background: rgba(19, 19, 23, 0.92); box-shadow: inset 0 0 0 1px var(--divider), 0 30px 80px -30px rgba(0, 0, 0, 0.9);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-radius: 24px;
+}
+@media (max-width: 420px) {
+  .join { padding-left: 12px; }
+  .join__input { font-size: 16px; }
+  .join__go { padding: 0 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .day--today, .join:focus-within::before { animation: none; } }
 .foot__in {
   max-width: 1280px; margin: 0 auto; padding-block: 28px;
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px 28px;
@@ -531,28 +661,20 @@ img { display: block; max-width: 100%; }
   .stage { aspect-ratio: 4 / 5; border-radius: 22px; }
 }
 /* One column: read as one continuous page rather than a deck of full-screen
-   slides. One background throughout, tighter bands, and each feature says
-   what it is before it shows it. */
+   slides. Tighter bands, and each feature says what it is before it shows it. */
 @media (max-width: 900px) {
-  .band, .band--raised {
-    background: var(--bg);
-    --panel: var(--surface); --panel-2: var(--surface-subtle); --panel-3: var(--surface-strong);
-  }
   .band { padding-block: clamp(44px, 9vw, 72px); }
   .head { gap: 12px; }
-  .stage { margin-top: 28px; box-shadow: 0 0 0 1px var(--divider); }
+  .stage { margin-top: 28px; }
   .feature__in { gap: 20px; }
   .feature .copy { order: -1; justify-self: start; gap: 12px; max-width: 560px; }
   .copy p { font-size: 16px; line-height: 1.62; }
   .learn { gap: 24px; }
-  .cta { padding-block: 48px 72px; }
+  .cta { padding-block: 48px 32px; }
 }
 @media (max-width: 560px) {
-  .hero { padding-block: 28px 32px; }
+  .hero { padding-block: 24px; }
   .hero__title { margin-top: 18px; }
-  /* the rotator already keeps a second line free for the longer phrases */
-  .hero__cta { margin-top: 8px; }
-  .hero__more { margin-top: 28px; }
   .h2 { font-size: 28px; }
   .h3 { font-size: 25px; }
 }
@@ -561,7 +683,7 @@ img { display: block; max-width: 100%; }
   .foot__tag { justify-self: center; }
 }
 @media (max-width: 560px) {
-  .faq__body { padding: 0 0 22px 56px; }
+  .faq__body { padding: 0 0 22px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -594,6 +716,7 @@ img { display: block; max-width: 100%; }
   <symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
   <symbol id="i-chev-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
   <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-chev-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
   <symbol id="i-timer" viewBox="0 0 24 24"><path d="M10 2h4"/><path d="M12 14l3-3"/><circle cx="12" cy="14" r="8"/></symbol>
@@ -602,15 +725,12 @@ img { display: block; max-width: 100%; }
   <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.4-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></symbol>
   <symbol id="i-percent" viewBox="0 0 24 24"><path d="M19 5 5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></symbol>
   <symbol id="i-trend" viewBox="0 0 24 24"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></symbol>
-  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
-  <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
   <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></symbol>
   <symbol id="i-calc" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8"/><path d="M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h.01M12 19h.01M16 19h.01"/></symbol>
   <symbol id="i-sigma" viewBox="0 0 24 24"><path d="M18 7V4H6l6 8-6 8h12v-3"/></symbol>
   <symbol id="i-redo" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
   <symbol id="i-up" viewBox="0 0 24 24"><path d="M9 18v-6H5l7-7 7 7h-4v6z"/></symbol>
-  <symbol id="i-tablet" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M12 18h.01"/></symbol>
   <symbol id="i-share" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/></symbol>
 </svg>
 
@@ -620,14 +740,20 @@ img { display: block; max-width: 100%; }
     <a class="nav__mark mark" href="#top" tabindex="-1" aria-hidden="true">
       <span class="mark__l"></span><span class="mark__r"></span>
     </a>
-    <a class="btn btn--ramp btn--sm nav__cta" href="#register">Register<span class="nav__cta-more">&nbsp;interest</span></a>
+    <a class="btn btn--ramp btn--sm nav__cta" href="#register">Register</a>
   </div>
 </header>
+
+<nav class="rail" id="rail" aria-label="Page sections" hidden>
+  <button class="rail__arrow" type="button" data-step="-1" aria-label="Previous section"><svg class="ic"><use href="#i-chev-up"/></svg></button>
+  <ol class="rail__list"></ol>
+  <button class="rail__arrow" type="button" data-step="1" aria-label="Next section"><svg class="ic"><use href="#i-chev-down"/></svg></button>
+</nav>
 
 <main id="top">
 
   <!-- ═══ hero ═══ -->
-  <section class="hero" aria-labelledby="hero-title">
+  <section class="hero" aria-labelledby="hero-title" data-nav="Home">
     <div class="fly" id="fly">
       <div class="mark" id="hero-mark" aria-hidden="true">
         <span class="mark__l"></span><span class="mark__r"></span>
@@ -647,70 +773,11 @@ img { display: block; max-width: 100%; }
       </span>
     </h1>
 
-    <div class="hero__cta">
-      <form class="reg" id="reg-hero" data-source="hero" data-step="email" novalidate>
-        <div class="reg__step" data-step="email">
-          <p class="reg__lead">Launching soon on Android and iPhone</p>
-          <label class="sr-only" for="rh-email">Email address</label>
-          <input class="reg__input" id="rh-email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="Your email address" aria-describedby="rh-note rh-error">
-          <div class="reg__trap" aria-hidden="true"><label for="rh-trap">Leave this empty</label><input id="rh-trap" name="hj_trap" type="text" tabindex="-1" autocomplete="off"></div>
-          <p class="reg__error" id="rh-error" aria-live="polite"></p>
-          <p class="fine" id="rh-note">We’ll only use it to tell you when HudJee opens.</p>
-          <button class="btn btn--ramp reg__submit" type="submit"><span>Register interest</span><svg class="ic"><use href="#i-arrow-right"/></svg></button>
-          <noscript><p class="fine">Turn on JavaScript to register.</p></noscript>
-        </div>
-
-        <div class="reg__card" data-step="details" hidden>
-          <div class="reg__head">
-            <span class="reg__ok"><svg class="ic"><use href="#i-check"/></svg></span>
-            <p class="reg__title" tabindex="-1">You’re on the list</p>
-            <p class="reg__sub">Three quick answers help us plan launch day. All optional.</p>
-          </div>
-          <fieldset class="reg__q">
-            <legend>When do you sit JEE?</legend>
-            <div class="reg__picks">
-              <label class="pick"><input type="radio" name="exam_year" value="2027"><span>2027</span></label>
-              <label class="pick"><input type="radio" name="exam_year" value="2028"><span>2028</span></label>
-              <label class="pick"><input type="radio" name="exam_year" value="2029"><span>2029</span></label>
-            </div>
-          </fieldset>
-          <fieldset class="reg__q">
-            <legend>Which phone do you use?</legend>
-            <div class="reg__picks">
-              <label class="pick"><input type="radio" name="platform" value="android"><span>Android</span></label>
-              <label class="pick"><input type="radio" name="platform" value="ios"><span>iPhone</span></label>
-            </div>
-          </fieldset>
-          <div class="reg__q">
-            <label class="reg__qlabel" for="rh-name">Your name</label>
-            <input class="reg__input" id="rh-name" name="name" type="text" autocomplete="name" maxlength="80">
-          </div>
-          <p class="reg__error" aria-live="polite"></p>
-          <div class="reg__actions">
-            <button class="btn btn--ramp reg__save" type="submit"><span>Save</span></button>
-            <button class="textbtn reg__skip" type="button">Skip</button>
-          </div>
-        </div>
-
-        <div class="reg__card reg__card--done" data-step="done" hidden>
-          <span class="reg__ok"><svg class="ic"><use href="#i-check"/></svg></span>
-          <p class="reg__title" tabindex="-1">You’re on the list</p>
-          <p class="reg__sub">We’ll write to <b class="reg__who"></b> the day HudJee opens.</p>
-          <p class="fine reg__preview" hidden>This is a preview copy of the page, so nothing was saved.</p>
-          <input class="reg__url" type="text" readonly hidden aria-label="Link to share">
-          <div class="reg__actions">
-            <button class="ghost reg__share" type="button"><svg class="ic"><use href="#i-share"/></svg><span>Share with a friend</span></button>
-            <button class="textbtn reg__again" type="button">Register someone else</button>
-          </div>
-        </div>
-      </form>
-    </div>
-
     <a class="ghost hero__more" href="#film">See how it works <svg class="ic"><use href="#i-arrow-down"/></svg></a>
   </section>
 
   <!-- ═══ the film ═══ -->
-  <section class="band band--raised" id="film" aria-labelledby="film-title">
+  <section class="band band--raised" id="film" aria-labelledby="film-title" data-nav="Overview">
     <header class="head">
       <h2 class="h2" id="film-title">Built around your whole syllabus</h2>
       <p class="lead">Give HudJee thirty minutes a day and it handles the rest, from choosing the chapter and pitching every question at your level to bringing back the ones you got wrong.</p>
@@ -733,7 +800,7 @@ img { display: block; max-width: 100%; }
   </section>
 
   <!-- ═══ 1 · tests ═══ -->
-  <section class="band feature" aria-labelledby="f1">
+  <section class="band feature" aria-labelledby="f1" data-nav="Mock tests">
     <div class="feature__in">
       <div class="vis" role="img" aria-label="The list of papers (adaptive mock, JEE Main mock, Physics sectional, Advanced-style paper), JEE Main marking of +4, −1 and 0, and an adaptive mock result projecting a JEE Main score of 96 to 112 out of 300.">
         <div class="art" aria-hidden="true">
@@ -771,7 +838,7 @@ img { display: block; max-width: 100%; }
   </section>
 
   <!-- ═══ 2 · alarm ═══ -->
-  <section class="band band--raised feature feature--flip" aria-labelledby="f2">
+  <section class="band band--raised feature feature--flip" aria-labelledby="f2" data-nav="Practice alarm">
     <div class="feature__in">
       <div class="vis" role="img" aria-label="The practice alarm ringing at 6:30 AM with Start practising, Snooze 10 min and Dismiss buttons, and the setting that turns it on for every day.">
         <div class="art" aria-hidden="true">
@@ -802,7 +869,7 @@ img { display: block; max-width: 100%; }
   </section>
 
   <!-- ═══ 3 · mistakes ═══ -->
-  <section class="band feature" aria-labelledby="f3">
+  <section class="band feature" aria-labelledby="f3" data-nav="Mistakes">
     <div class="feature__in">
       <div class="vis" role="img" aria-label="After a wrong answer: 38 percent of 2,140 attempts got the question right, a list of reasons for the miss with Silly mistake selected, and a mistake revision set of 15 questions due again after 1, 3 and 7 days.">
         <div class="art" aria-hidden="true">
@@ -840,7 +907,7 @@ img { display: block; max-width: 100%; }
   </section>
 
   <!-- ═══ 4 · readiness ═══ -->
-  <section class="band band--raised feature feature--flip" aria-labelledby="f4">
+  <section class="band band--raised feature feature--flip" aria-labelledby="f4" data-nav="Readiness">
     <div class="feature__in">
       <div class="vis" role="img" aria-label="Home screen cards: a readiness score of 64 out of 100 with 71 percent accuracy, the week’s daily goal strip with today 14 of 20 questions done, and today’s streak, questions solved and time.">
         <div class="art" aria-hidden="true">
@@ -881,7 +948,7 @@ img { display: block; max-width: 100%; }
   </section>
 
   <!-- ═══ 5 · community ═══ -->
-  <section class="band feature" aria-labelledby="f5">
+  <section class="band feature" aria-labelledby="f5" data-nav="Solutions">
     <div class="feature__in">
       <div class="vis" role="img" aria-label="A verified community solution to a rolling-sphere question with 128 upvotes, a friend’s challenge to accept, and a question a friend shared.">
         <div class="art" aria-hidden="true">
@@ -917,7 +984,7 @@ img { display: block; max-width: 100%; }
   </section>
 
   <!-- ═══ learn more ═══ -->
-  <section class="band band--raised" aria-labelledby="learn-title">
+  <section class="band band--raised" aria-labelledby="learn-title" data-nav="Learn more">
     <div class="learn">
       <div class="learn__intro">
         <h2 class="h2" id="learn-title">Learn more about HudJee</h2>
@@ -925,15 +992,15 @@ img { display: block; max-width: 100%; }
       </div>
       <div>
         <details class="faq">
-          <summary><span class="faq__ic"><svg class="ic"><use href="#i-target"/></svg></span><span><span class="faq__t">How HudJee picks your next question</span><span class="faq__d">Item response theory, without the maths.</span></span><svg class="ic faq__chev"><use href="#i-chev-down"/></svg></summary>
+          <summary><span><span class="faq__t">How HudJee picks your next question</span><span class="faq__d">Item response theory, without the maths.</span></span><svg class="ic faq__chev"><use href="#i-chev-down"/></svg></summary>
           <div class="faq__body"><p>Every question in the bank carries a difficulty, and a measure of how sharply it separates students who know the idea from students who don’t. Both are fitted from real students’ answers. After each answer, HudJee updates its estimate of your level and serves the question that tells it the most, which is usually one right at the edge of what you can do.</p></div>
         </details>
         <details class="faq">
-          <summary><span class="faq__ic"><svg class="ic"><use href="#i-book"/></svg></span><span><span class="faq__t">Where the questions come from</span><span class="faq__d">JEE Main papers, worked solutions and a review queue.</span></span><svg class="ic faq__chev"><use href="#i-chev-down"/></svg></summary>
+          <summary><span><span class="faq__t">Where the questions come from</span><span class="faq__d">JEE Main papers, worked solutions and a review queue.</span></span><svg class="ic faq__chev"><use href="#i-chev-down"/></svg></summary>
           <div class="faq__body"><p>The bank is built on JEE Main previous-year papers, each with a worked solution, alongside questions written and reviewed in HudJee’s own content studio. If three students report a problem with a question, it comes out of practice automatically until it’s fixed.</p></div>
         </details>
         <details class="faq">
-          <summary><span class="faq__ic"><svg class="ic"><use href="#i-tablet"/></svg></span><span><span class="faq__t">Phones and tablets</span><span class="faq__d">Android and iPhone, and laid out properly on an iPad.</span></span><svg class="ic faq__chev"><use href="#i-chev-down"/></svg></summary>
+          <summary><span><span class="faq__t">Phones and tablets</span><span class="faq__d">Android and iPhone, and laid out properly on an iPad.</span></span><svg class="ic faq__chev"><use href="#i-chev-down"/></svg></summary>
           <div class="faq__body"><p>HudJee lays itself out for the screen it’s on. Phones get the tab bar, tablets get a rail down the side, and a wide screen gets a full sidebar. In a practice session on a tablet, the question sits on top and the answers get their own pane along the bottom. Turn an iPad sideways and the app turns with it.</p></div>
         </details>
       </div>
@@ -941,18 +1008,23 @@ img { display: block; max-width: 100%; }
   </section>
 
   <!-- ═══ closing call ═══ -->
-  <section class="band cta" id="register" aria-labelledby="register-title">
+  <section class="band cta finale" id="register" aria-labelledby="register-title" data-nav="Register">
+    <div class="finale__in">
+    <p class="pill"><span class="day day--today" aria-hidden="true"></span>Launching soon on Android and iPhone</p>
     <h2 class="h2" id="register-title">Ready to rank higher?</h2>
-    <p class="lead">Coming soon to Android and iPhone.</p>
+    <p class="lead">Leave your email and you’ll be the first to know when HudJee opens.</p>
     <div class="cta__form">
       <form class="reg" id="reg-closing" data-source="closing" data-step="email" novalidate>
         <div class="reg__step" data-step="email">
-          <label class="sr-only" for="rc-email">Email address</label>
-          <input class="reg__input" id="rc-email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="Your email address" aria-describedby="rc-note rc-error">
+          <div class="join">
+            <span class="day join__day" aria-hidden="true"><svg class="ic"><use href="#i-check"/></svg></span>
+            <label class="sr-only" for="rc-email">Email address</label>
+            <input class="join__input" id="rc-email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="you@example.com" aria-describedby="rc-note rc-error">
+            <button class="join__go reg__submit" type="submit"><span>Register</span><svg class="ic"><use href="#i-arrow-right"/></svg></button>
+          </div>
           <div class="reg__trap" aria-hidden="true"><label for="rc-trap">Leave this empty</label><input id="rc-trap" name="hj_trap" type="text" tabindex="-1" autocomplete="off"></div>
           <p class="reg__error" id="rc-error" aria-live="polite"></p>
-          <p class="fine" id="rc-note">We’ll only use it to tell you when HudJee opens.</p>
-          <button class="btn btn--ramp reg__submit" type="submit"><span>Register interest</span><svg class="ic"><use href="#i-arrow-right"/></svg></button>
+          <p class="fine" id="rc-note">We’ll only use it to tell you when HudJee opens. <a href="/privacy">Privacy</a></p>
           <noscript><p class="fine">Turn on JavaScript to register.</p></noscript>
         </div>
 
@@ -1001,10 +1073,12 @@ img { display: block; max-width: 100%; }
         </div>
       </form>
     </div>
+    </div>
   </section>
 </main>
 
 <footer class="foot">
+  <canvas class="foot__art" id="foot-art" aria-hidden="true"></canvas>
   <div class="foot__in">
     <span>© 2026 HudJee</span>
     <nav class="foot__links" aria-label="Legal and support">
@@ -1088,6 +1162,180 @@ img { display: block; max-width: 100%; }
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', () => { measure(); shown = target(); draw(); });
   if (document.fonts) document.fonts.ready.then(measure);
+
+  /* ── section rail: one tick per section; arrows step to the previous / next ── */
+  {
+    const rail = $('#rail');
+    const list = $('.rail__list', rail);
+    const secs = $$('main > section[data-nav]');
+    const [up, down] = $$('.rail__arrow', rail);
+    const ticks = secs.map((sec, i) => {
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'rail__tick';
+      b.setAttribute('aria-label', sec.dataset.nav);
+      b.innerHTML = '<span aria-hidden="true"></span>';
+      b.firstChild.textContent = sec.dataset.nav;
+      b.addEventListener('click', () => go(i));
+      li.appendChild(b);
+      list.appendChild(li);
+      return b;
+    });
+    let cur = -1, raf = 0;
+    function go(i) {
+      const sec = secs[Math.max(0, Math.min(secs.length - 1, i))];
+      if (sec === secs[0]) window.scrollTo({ top: 0, behavior: reduce.matches ? 'auto' : 'smooth' });
+      else sec.scrollIntoView({ behavior: reduce.matches ? 'auto' : 'smooth', block: 'start' });
+    }
+    // the current section: the last one whose top has passed 40% of the way down the screen
+    function track() {
+      raf = 0;
+      const line = (window.innerHeight || 800) * 0.4;
+      let i = 0;
+      secs.forEach((sec, k) => { if (sec.getBoundingClientRect().top <= line) i = k; });
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) i = secs.length - 1;
+      if (i === cur) return;
+      cur = i;
+      ticks.forEach((t, k) => (k === i ? t.setAttribute('aria-current', 'true') : t.removeAttribute('aria-current')));
+      up.disabled = i === 0;
+      down.disabled = i === secs.length - 1;
+    }
+    up.addEventListener('click', () => go(cur - 1));
+    down.addEventListener('click', () => go(cur + 1));
+    rail.hidden = false;
+    track();
+    window.addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(track); }, { passive: true });
+    window.addEventListener('resize', track);
+  }
+
+  /* ── footer art: "HudJee" spelled in streak-calendar day boxes ── */
+  // The word is rendered large off screen, then sampled onto a grid of boxes: a box
+  // the letters cover is a day done, an edge box a partial day, the rest days to
+  // come. On arrival the days fill in column by column; the box after the word is
+  // today, outlined in the ramp. It brightens while a valid address is typed in the
+  // form above, fills on registering, and a ripple runs out from it. The pointer
+  // warms the boxes near it.
+  {
+    const cv = $('#foot-art');
+    const ctx = cv && cv.getContext && cv.getContext('2d');
+    if (ctx) {
+      const css = getComputedStyle(document.documentElement);
+      const col = (n) => css.getPropertyValue(n).trim();
+      const C = { done: col('--mark-today'), part: col('--mark-partial'), future: col('--surface-subtle'), a: col('--ramp-a'), b: col('--ramp-b'), c: col('--ramp-c'), ink: col('--on-light') };
+      let grid = null, start = 0, shown = false, visible = false, raf = 0, pointer = null;
+      // registered on an earlier visit? (the form's own record is read further down the script)
+      let ready = false, ripple = 0, done = false;
+      try { done = !!JSON.parse(localStorage.getItem('hudjee:pre-registered') || 'null'); } catch (e) { done = false; }
+
+      function build() {
+        const w = cv.clientWidth;
+        if (!w) return;
+        const cell = w < 520 ? 6 : w < 900 ? 9 : 12, gap = cell < 8 ? 2 : 3, step = cell + gap;
+        const cols = Math.floor((w + gap) / step), rows = cell < 8 ? 11 : 13;
+        // the word, supersampled 8x, then averaged into boxes
+        const k = 8, off = document.createElement('canvas');
+        off.width = cols * k; off.height = rows * k;
+        const o = off.getContext('2d');
+        let size = rows * k * 0.92;
+        o.font = `700 ${size}px Montserrat, sans-serif`;
+        size *= Math.min(1, (cols - 6) * k * 0.86 / o.measureText('HudJee').width);
+        o.font = `700 ${size}px Montserrat, sans-serif`;
+        o.fillStyle = '#fff';
+        const tw = o.measureText('HudJee').width, capH = o.measureText('H').actualBoundingBoxAscent;
+        const base = (rows * k + capH) / 2;
+        o.fillText('HudJee', (cols * k - tw) / 2 - k * 1.2, base);
+        const px = o.getImageData(0, 0, cols * k, rows * k).data;
+        const kind = new Uint8Array(cols * rows);
+        let last = 0;
+        for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+          let sum = 0;
+          for (let y = 0; y < k; y++) for (let x = 0; x < k; x++) sum += px[((r * k + y) * cols * k + c * k + x) * 4 + 3];
+          const cover = sum / (k * k * 255);
+          const kd = cover > 0.5 ? 2 : cover > 0.18 ? 1 : 0;
+          if (kd) { kind[r * cols + c] = kd; last = Math.max(last, c); }
+        }
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const h = rows * step - gap;
+        cv.style.height = `${h}px`;
+        cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        grid = { kind, cols, rows, cell, gap, step, w, h, ox: (w - (cols * step - gap)) / 2,
+          todayR: Math.min(rows - 1, Math.round(base / k) - 1), todayC: Math.min(cols - 1, last + 2) };
+      }
+
+      const box = (x, y, s, rad) => { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, s, s, rad) : ctx.rect(x, y, s, s); };
+      function paint(now) {
+        raf = 0;
+        const g = grid;
+        if (!g) return;
+        const t = shown ? (reduce.matches ? 1e9 : now - start) : 0;
+        ctx.clearRect(0, 0, g.w, g.h);
+        const rad = g.cell * 0.28, half = g.cell / 2;
+        const tx = g.ox + g.todayC * g.step, ty = g.todayR * g.step;
+        const rip = ripple && !reduce.matches ? ((now - ripple) / 1000) * 46 : -1;   // ripple radius, in boxes
+        let busy = false;
+        for (let r = 0; r < g.rows; r++) for (let c = 0; c < g.cols; c++) {
+          const x = g.ox + c * g.step, y = r * g.step;
+          const kd = g.kind[r * g.cols + c];
+          // each column's days fill in turn, left to right, over ~1.4s
+          const on = Math.max(0, Math.min(1, (t - c * (1400 / g.cols)) / 260));
+          if (on < 1 && shown) busy = true;
+          // fade the field towards the sides so the word holds the centre
+          const edge = Math.abs(c - g.cols / 2) / (g.cols / 2);
+          let a = kd ? 1 : 1 - 0.75 * edge * edge;
+          let fill = C.future;
+          if (kd && on > 0) { fill = kd === 2 ? C.done : C.part; a = 0.25 + 0.75 * on; }
+          if (pointer && !kd) {
+            const warm = Math.max(0, 1 - Math.hypot(x + half - pointer.x, y + half - pointer.y) / (g.step * 5));
+            if (warm > 0) { fill = C.part; a = Math.max(a * (1 - warm), 0.18 + 0.5 * warm); }
+          }
+          if (rip >= 0 && !kd) {
+            const d = Math.hypot(c - g.todayC, r - g.todayR), band = 1 - Math.abs(d - rip) / 2.2;
+            if (band > 0) { const fade = Math.max(0, 1 - rip / 60); fill = C.done; a = Math.max(a, band * 0.75 * fade); }
+          }
+          ctx.globalAlpha = a; ctx.fillStyle = fill; box(x, y, g.cell, rad); ctx.fill();
+        }
+        if (rip >= 0) { if (rip < 60) busy = true; else ripple = 0; }
+        // today
+        const inT = shown ? Math.min(1, Math.max(0, (t - 1400) / 300)) : 0;
+        if (done) {
+          ctx.globalAlpha = ripple ? 1 : inT; ctx.fillStyle = C.done; box(tx, ty, g.cell, rad); ctx.fill();
+          ctx.strokeStyle = C.ink; ctx.lineWidth = Math.max(1.2, g.cell * 0.14); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+          ctx.beginPath(); ctx.moveTo(tx + g.cell * 0.27, ty + g.cell * 0.53); ctx.lineTo(tx + g.cell * 0.43, ty + g.cell * 0.68); ctx.lineTo(tx + g.cell * 0.74, ty + g.cell * 0.35); ctx.stroke();
+        } else {
+          const speed = ready ? 160 : 420;
+          const pulse = reduce.matches ? 1 : (ready ? 0.8 : 0.65) + (ready ? 0.2 : 0.35) * Math.sin(t / speed);
+          const grad = ctx.createLinearGradient(tx, ty, tx + g.cell, ty + g.cell);
+          grad.addColorStop(0, C.a); grad.addColorStop(0.5, C.b); grad.addColorStop(1, C.c);
+          const lw = Math.max(1.5, g.cell * (ready ? 0.22 : 0.16));
+          ctx.globalAlpha = inT * pulse; ctx.lineWidth = lw; ctx.strokeStyle = grad;
+          box(tx + lw / 2, ty + lw / 2, g.cell - lw, rad); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        if (!reduce.matches && (busy || (visible && shown))) raf = requestAnimationFrame(paint);
+      }
+      const kick = () => { if (!raf) raf = requestAnimationFrame(paint); };
+      const rebuild = () => { build(); kick(); };
+
+      build();
+      if (document.fonts) document.fonts.ready.then(rebuild);
+      if (hasIO) {
+        new IntersectionObserver(([e]) => {
+          visible = e.isIntersecting;
+          if (visible && !shown) { shown = true; start = performance.now(); }
+          kick();
+        }, { threshold: 0.3 }).observe(cv);
+      } else { shown = visible = true; }
+      window.addEventListener('resize', rebuild);
+      cv.addEventListener('pointermove', (e) => { const r = cv.getBoundingClientRect(); pointer = { x: e.clientX - r.left, y: e.clientY - r.top }; kick(); });
+      cv.addEventListener('pointerleave', () => { pointer = null; kick(); });
+      document.addEventListener('hj:ready', (e) => { ready = e.detail; kick(); });
+      document.addEventListener('hj:registered', () => { done = true; ready = false; ripple = performance.now(); kick(); });
+      document.addEventListener('hj:reset', () => { done = false; ready = false; kick(); });
+      kick();
+    }
+  }
 
   /* ── the mark unlocks and clicks shut, as BootSplash does on every cold start ── */
   // Distances are BootSplash's own: 8pt apart along the gap's normal, 5pt along
@@ -1231,21 +1479,27 @@ img { display: block; max-width: 100%; }
   if (hasIO) new IntersectionObserver(([e]) => { filmInView = e.isIntersecting; filmSync(); }, { threshold: 0.4 }).observe(stage);
   else filmSync();
 
-  // The film settles to full size as it rises into view.
+  // The film grows to full size as it rises into view: small while its top is at
+  // the bottom of the screen, full once its top is a quarter of the way down.
   if (!reduce.matches) {
-    let raf = 0;
+    let raf = 0, scale = 1;
     const settle = () => {
       raf = 0;
       if (document.fullscreenElement) return;
-      const r = stage.getBoundingClientRect();
+      // where the film's top would be unscaled (it scales about its centre)
+      const top = stage.getBoundingClientRect().top - ((1 - scale) * stage.offsetHeight) / 2;
       const vh = window.innerHeight || 800;
-      const t = Math.max(0, Math.min(1, (vh - r.top) / (vh * 0.75)));
-      stage.style.transform = `scale(${(0.94 + 0.06 * t).toFixed(4)})`;
+      const t = Math.max(0, Math.min(1, (vh - top) / (vh * 0.75)));
+      const from = window.innerWidth < 640 ? 0.82 : 0.6;
+      const e = t * t * (3 - 2 * t);
+      scale = from + (1 - from) * e;
+      stage.style.transform = `scale(${scale.toFixed(4)})`;
     };
     settle();
     window.addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(settle); }, { passive: true });
     window.addEventListener('resize', settle);
   }
+
 
   /* ── pre-registration: an email address, then three optional questions ── */
   // The build writes the Supabase project in here. Without it (a local preview,
@@ -1372,6 +1626,9 @@ img { display: block; max-width: 100%; }
     emailInput.addEventListener('input', () => {
       emailInput.removeAttribute('aria-invalid');
       emailError.textContent = '';
+      const ready = !!readEmail(emailInput.value);
+      form.classList.toggle('is-ready', ready);
+      document.dispatchEvent(new CustomEvent('hj:ready', { detail: ready }));
     });
 
     form.addEventListener('submit', async (e) => {
@@ -1396,6 +1653,8 @@ img { display: block; max-width: 100%; }
             return;
           }
           remember({ email });
+          form.classList.add('is-done');
+          document.dispatchEvent(new CustomEvent('hj:registered'));
           regForms.forEach((f) => (f === form ? showStep(f, 'details', true) : showStep(f, 'done')));
         } catch (err) {
           emailError.textContent = MSG.failed;
@@ -1431,6 +1690,8 @@ img { display: block; max-width: 100%; }
     $('.reg__skip', form).addEventListener('click', () => showStep(form, 'done', true));
     $('.reg__again', form).addEventListener('click', () => {
       remember(null);
+      form.classList.remove('is-ready', 'is-done');
+      document.dispatchEvent(new CustomEvent('hj:reset'));
       regForms.forEach((f) => { f.reset(); showStep(f, 'email'); });
       emailInput.focus();
     });
@@ -1439,15 +1700,6 @@ img { display: block; max-width: 100%; }
 
   if (mine) regForms.forEach((f) => showStep(f, 'done'));
 
-  // The bar's button goes to the form you can see, or to the one at the end.
-  $('.nav__cta').addEventListener('click', (e) => {
-    const hero = $('#reg-hero');
-    const r = hero.getBoundingClientRect();
-    if (hero.dataset.step === 'email' && r.top >= 64 && r.bottom <= window.innerHeight) {
-      e.preventDefault();
-      $('input[name="email"]', hero).focus();
-    }
-  });
 
   /* ── feature illustrations: the panels drift into place as the band arrives ── */
   if (hasIO && !reduce.matches) {
