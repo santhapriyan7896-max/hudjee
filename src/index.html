@@ -1513,6 +1513,8 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
     empty: 'Enter your email address.',
     invalid: 'That email address doesn’t look right. Check it for typos.',
     failed: 'Couldn’t register you just now. Check your connection and try again.',
+    already: 'This email is already on the list. We’ll write to you the day HudJee opens.',
+    busy: 'Lots of people are signing up right now. Try again in a few minutes.',
     unsaved: 'Couldn’t save that. Try again, or skip it.',
   };
   const regForms = $$('form.reg');
@@ -1649,7 +1651,8 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
           });
           if (!res || res.ok !== true) {
             if (res && res.error === 'invalid_email') emailInput.setAttribute('aria-invalid', 'true');
-            emailError.textContent = res && res.error === 'invalid_email' ? MSG.invalid : MSG.failed;
+            const why = res && res.error;
+            emailError.textContent = why === 'invalid_email' ? MSG.invalid : why === 'already_registered' ? MSG.already : why === 'busy' ? MSG.busy : MSG.failed;
             return;
           }
           remember({ email });
