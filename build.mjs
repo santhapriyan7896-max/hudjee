@@ -9,7 +9,7 @@
 //   node build.mjs --dev    local build; without them the form runs as a preview
 //
 // Values come from the environment (the host's build settings), falling back to
-// apps/web/.env. Both end up in the page, so only ever the publishable key.
+// .env. Both end up in the page, so only ever the publishable key.
 
 import { existsSync, readFileSync } from 'node:fs';
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -66,7 +66,7 @@ if (supabaseUrl && supabaseKey) {
 } else if (!dev) {
   fail(
     'SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY are required. Set them in the host\'s build settings,\n' +
-      '  or in apps/web/.env (see .env.example). Use `--dev` to build a preview that saves nothing.',
+      '  or in .env (see .env.example). Use `--dev` to build a preview that saves nothing.',
   );
 } else {
   console.warn('No Supabase values: building a preview. The form will run but save nothing.');
@@ -122,4 +122,4 @@ for (const page of LEGAL) {
   await writeFile(here(`./dist/${page.slug}/index.html`), out);
 }
 
-console.log(`Built apps/web/dist for ${siteUrl}: ${config ? `saving to ${new URL(supabaseUrl).host}` : 'preview, saves nothing'}.`);
+console.log(`Built dist for ${siteUrl}: ${config ? `saving to ${new URL(supabaseUrl).host}` : 'preview, saves nothing'}.`);
