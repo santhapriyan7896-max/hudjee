@@ -141,23 +141,20 @@ img { display: block; max-width: 100%; }
 .nav {
   position: sticky; top: env(safe-area-inset-top, 0px); z-index: 40;
   background: var(--bg);
-  border-bottom: 1px solid transparent;
-  transition: border-color 0.3s var(--ease-std);
 }
-.nav.is-scrolled { border-bottom-color: var(--divider); }
 .nav__in {
+  position: relative;
   max-width: 1280px; height: 64px; margin: 0 auto; padding-inline: var(--gutter);
-  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
 }
-.nav__brand { justify-self: start; display: inline-flex; padding: 8px 0; }
+.nav__brand { display: inline-flex; padding: 8px 0; }
 .nav__brand img { height: 21px; width: auto; }
-.nav__mark {
-  justify-self: center; display: block; width: 28px;
-  opacity: 0; transform: translateY(8px) scale(0.85); pointer-events: none;
-  transition: opacity 0.35s var(--ease-std), transform 0.5s var(--ease-emph);
+.nav .nav__mark {
+  position: absolute; left: calc(50% - 14px); top: calc(50% - 14px * 300 / 297);
+  display: block; width: 28px; visibility: hidden;
 }
-.nav.show-mark .nav__mark { opacity: 1; transform: none; pointer-events: auto; }
-.nav__cta { justify-self: end; }
+.nav.show-mark .nav__mark { visibility: visible; }
+@media (max-width: 420px) { .nav__cta-more { display: none; } }
 
 /* ─── the mark: splash-icon.png, cut at the gap between its strokes ───────── */
 
@@ -176,6 +173,10 @@ img { display: block; max-width: 100%; }
   padding-block: clamp(40px, 8vh, 96px) clamp(36px, 5vh, 56px);
 }
 .hero .mark { width: clamp(64px, 7vw, 88px); cursor: pointer; }
+/* Carries the hero mark up into the nav's centre as the page scrolls (see the script). */
+.fly { position: relative; z-index: 41; transform-origin: 50% 50%; }
+.fly.is-moving { will-change: transform; }
+.fly.is-docked { visibility: hidden; }
 .hero__title {
   margin-top: clamp(22px, 3vh, 32px);
   max-width: 100%;
@@ -534,8 +535,6 @@ img { display: block; max-width: 100%; }
   .foot__tag { justify-self: center; }
 }
 @media (max-width: 560px) {
-  .nav__mark { display: none; }
-  .nav__in { grid-template-columns: 1fr auto; }
   .faq__body { padding: 0 0 22px 56px; }
 }
 
@@ -543,6 +542,19 @@ img { display: block; max-width: 100%; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition-duration: 0.01ms !important; transition-delay: 0s !important; animation: none !important; }
 }
+
+/* ─── "email copied" note ─────────────────────────────────────────────────── */
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 60;
+  max-width: calc(100% - 32px); padding: 12px 18px; border-radius: 12px;
+  background: var(--surface-strong); border: 1px solid var(--divider); color: var(--text);
+  font: 600 14px/1.4 var(--font); text-align: center;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  opacity: 0; transform: translate(-50%, 8px); pointer-events: none;
+  transition: opacity 0.2s var(--ease-std), transform 0.2s var(--ease-std);
+}
+.toast.is-on { opacity: 1; transform: translate(-50%, 0); }
 </style>
 </head>
 <body>
@@ -582,7 +594,7 @@ img { display: block; max-width: 100%; }
     <a class="nav__mark mark" href="#top" tabindex="-1" aria-hidden="true">
       <span class="mark__l"></span><span class="mark__r"></span>
     </a>
-    <a class="btn btn--ramp btn--sm nav__cta" href="#register">Register interest</a>
+    <a class="btn btn--ramp btn--sm nav__cta" href="#register">Register<span class="nav__cta-more">&nbsp;interest</span></a>
   </div>
 </header>
 
@@ -590,8 +602,10 @@ img { display: block; max-width: 100%; }
 
   <!-- ═══ hero ═══ -->
   <section class="hero" aria-labelledby="hero-title">
-    <div class="mark" id="hero-mark" aria-hidden="true">
-      <span class="mark__l"></span><span class="mark__r"></span>
+    <div class="fly" id="fly">
+      <div class="mark" id="hero-mark" aria-hidden="true">
+        <span class="mark__l"></span><span class="mark__r"></span>
+      </div>
     </div>
 
     <h1 class="hero__title" id="hero-title">
@@ -968,9 +982,10 @@ img { display: block; max-width: 100%; }
   <div class="foot__in">
     <span>© 2026 HudJee</span>
     <nav class="foot__links" aria-label="Legal and support">
-      <a href="https://hudjee.com/privacy">Privacy</a>
-      <a href="https://hudjee.com/terms">Terms</a>
-      <span>support@hudjee.com</span>
+      <a href="/privacy">Privacy</a>
+      <a href="/cookies">Cookies</a>
+      <a href="/terms">Terms</a>
+      <a href="mailto:support@hudjee.com">support@hudjee.com</a>
     </nav>
     <span class="foot__tag"><span class="mark" aria-hidden="true"><span class="mark__l"></span><span class="mark__r"></span></span>Practice daily. Rank higher.</span>
   </div>
@@ -983,17 +998,70 @@ img { display: block; max-width: 100%; }
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
   const hasIO = 'IntersectionObserver' in window;
 
-  /* ── nav: a hairline once the page moves, the mark once the hero's has gone ── */
+  /* ── nav: the hero's mark shrinks and flies into the nav's centre as you scroll ── */
+  // Progress runs 0 → 1 over the scroll it takes the mark's own centre to reach the
+  // nav's. Along the way it scales down to the nav mark's size and eases into place;
+  // at 1 it sits exactly on the nav mark, which takes over. The drawn progress chases
+  // the scroll with a little lag, so a notched wheel still reads as one glide.
   const nav = $('#nav');
   const heroMark = $('#hero-mark');
-  const onScroll = () => nav.classList.toggle('is-scrolled', window.scrollY > 4);
-  onScroll();
-  window.addEventListener('scroll', onScroll, { passive: true });
-  if (hasIO) {
-    new IntersectionObserver(([e]) => nav.classList.toggle('show-mark', !e.isIntersecting), {
-      rootMargin: '-64px 0px 0px 0px',
-    }).observe(heroMark);
+  const fly = $('#fly');
+  const navMark = $('.nav__mark', nav);
+  let geo = null, shown = 0, rafId = 0, last = 0;
+  const ease = (t) => t * t * (3 - 2 * t);
+
+  function measure() {
+    fly.style.transform = '';
+    const from = fly.getBoundingClientRect();
+    const to = navMark.getBoundingClientRect();
+    const y = window.scrollY;
+    const fromY = from.top + y + from.height / 2;   // the mark's centre, page coordinates
+    const toY = to.top + to.height / 2;             // the nav mark's centre, on screen (the nav is sticky)
+    geo = {
+      run: Math.max(1, fromY - toY),
+      dx: (to.left + to.width / 2) - (from.left + from.width / 2),
+      scale: to.width / from.width,
+      on: to.width > 0,                             // no nav mark on this layout: just scroll away
+    };
+    draw();
   }
+  const target = () => (geo && geo.on ? Math.min(1, Math.max(0, window.scrollY / geo.run)) : 0);
+
+  function draw() {
+    if (!geo) return;
+    const docked = geo.on && shown > 0.999;
+    nav.classList.toggle('show-mark', docked);
+    fly.classList.toggle('is-docked', docked);
+    fly.classList.toggle('is-moving', shown > 0 && !docked);
+    if (shown <= 0 || docked) { fly.style.transform = ''; return; }
+    const e = ease(shown);
+    // Scroll alone carries the mark up by scrollY; add what's left to land it on the path.
+    const ty = window.scrollY - geo.run * e;
+    const sc = 1 + (geo.scale - 1) * e;
+    fly.style.transform = `translate3d(${(geo.dx * e).toFixed(2)}px, ${ty.toFixed(2)}px, 0) scale(${sc.toFixed(4)})`;
+  }
+
+  function tick(now) {
+    const goal = target();
+    const dt = Math.min(64, now - (last || now));
+    last = now;
+    shown += (goal - shown) * (1 - Math.exp(-dt / 70));
+    if (Math.abs(goal - shown) < 0.0005) shown = goal;
+    draw();
+    rafId = shown === goal ? 0 : requestAnimationFrame(tick);
+    if (!rafId) last = 0;
+  }
+  function onScroll() {
+    if (reduce.matches) { shown = target() >= 1 ? 1 : 0; draw(); return; }
+    draw();                                          // keep the mark on its path this frame
+    if (!rafId) rafId = requestAnimationFrame(tick);
+  }
+  measure();
+  shown = target();
+  draw();
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', () => { measure(); shown = target(); draw(); });
+  if (document.fonts) document.fonts.ready.then(measure);
 
   /* ── the mark unlocks and clicks shut, as BootSplash does on every cold start ── */
   // Distances are BootSplash's own: 8pt apart along the gap's normal, 5pt along
@@ -1366,6 +1434,42 @@ img { display: block; max-width: 100%; }
       io.observe(v);
     });
   }
+})();
+</script>
+<p class="toast" id="toast" role="status" aria-live="polite"></p>
+<script>
+// A mailto link does nothing where no mail app is set up (common on laptops),
+// so clicking one also copies the address. The link still opens a mail app if there is one.
+(() => {
+  const toast = document.getElementById('toast');
+  let hide;
+  function show(text) {
+    toast.textContent = text;
+    toast.classList.add('is-on');
+    clearTimeout(hide);
+    hide = setTimeout(() => toast.classList.remove('is-on'), 3200);
+  }
+  // In-app browsers (Instagram, Telegram) can refuse the clipboard API; fall back to the old way.
+  function copyOldWay(text) {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.appendChild(area);
+    area.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    area.remove();
+    return ok;
+  }
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('a[href^="mailto:"]');
+    if (!link) return;
+    const email = decodeURIComponent(link.getAttribute('href').slice(7).split('?')[0]);
+    const done = (ok) => show(ok ? `Email address copied: ${email}` : `Email us at ${email}`);
+    if (navigator.clipboard) navigator.clipboard.writeText(email).then(() => done(true), () => done(copyOldWay(email)));
+    else done(copyOldWay(email));
+  });
 })();
 </script>
 </body>

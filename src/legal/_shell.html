@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>%TITLE% | HudJee</title>
+<meta name="description" content="%DESCRIPTION%">
+<meta name="theme-color" content="#0A0A0C">
+<link rel="canonical" href="%SITE_URL%/%SLUG%">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="HudJee">
+<meta property="og:url" content="%SITE_URL%/%SLUG%">
+<meta property="og:title" content="%TITLE% | HudJee">
+<meta property="og:description" content="%DESCRIPTION%">
+<meta property="og:image" content="%SITE_URL%/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">
+<style>
+/* The legal pages: the home page's nav, footer and palette around one
+   reading column. Tokens are the subset of index.html these pages use. */
+:root {
+  color-scheme: dark;
+
+  --bg: #0A0A0C;
+  --surface: #131317;
+  --surface-subtle: #1B1B20;
+  --surface-strong: #232329;
+  --divider: #26262C;
+  --text: #FFFFFF;
+  --text-body: #C9CDD4;
+  --text-muted: #9CA3AF;
+  --text-faint: #838A96;
+  --ramp-a: #6D5DF6;
+  --ramp-b: #4A4A63;
+  --ramp-c: #C99A6B;
+  --ramp: linear-gradient(90deg, var(--ramp-a), var(--ramp-b) 50%, var(--ramp-c));
+  --mark-img: url("/mark.webp");
+
+  --font: "Montserrat", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius: 18px;
+  --radius-btn: 14px;
+  --gutter: clamp(16px, 4vw, 40px);
+  --ease-std: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 88px; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 16px/1.6 var(--font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+h1, h2, h3 { margin: 0; font-weight: 700; color: var(--text); text-wrap: balance; }
+p { margin: 0; text-wrap: pretty; }
+a { color: inherit; }
+img { display: block; max-width: 100%; }
+:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; border-radius: 6px; }
+
+.btn {
+  --fill: var(--bg);
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 38px; padding: 0 16px;
+  border: 1.5px solid transparent; border-radius: 12px;
+  font: 700 14px/1 var(--font); letter-spacing: -0.012em;
+  color: var(--text); text-decoration: none; white-space: nowrap;
+  background: linear-gradient(var(--fill), var(--fill)) padding-box, var(--ramp) border-box;
+  transition: transform 0.18s var(--ease-std);
+}
+.btn:hover { --fill: var(--surface); }
+.btn:active { transform: scale(0.97); }
+
+/* ─── nav ─────────────────────────────────────────────────────────────────── */
+
+.nav {
+  position: sticky; top: 0; z-index: 40;
+  background: var(--bg);
+}
+.nav__in {
+  max-width: 1280px; height: 64px; margin: 0 auto; padding-inline: var(--gutter);
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+.nav__brand { display: inline-flex; padding: 8px 0; }
+.nav__brand img { height: 21px; width: auto; }
+
+/* ─── the mark, as on the home page ───────────────────────────────────────── */
+
+.mark { position: relative; aspect-ratio: 297 / 300; }
+.mark > span { position: absolute; inset: 0; background: var(--mark-img) center / contain no-repeat; }
+.mark__l { clip-path: inset(0 53.42% 0 0); }
+.mark__r { clip-path: inset(0 0 0 46.58%); }
+
+/* ─── the document ────────────────────────────────────────────────────────── */
+
+.doc {
+  max-width: 760px; margin: 0 auto;
+  padding: clamp(40px, 7vw, 88px) var(--gutter) clamp(72px, 10vw, 128px);
+}
+.doc__eyebrow {
+  font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-faint);
+}
+.doc h1 {
+  margin-top: 10px;
+  font-size: clamp(34px, 6vw, 52px); line-height: 1.08; letter-spacing: -0.03em;
+}
+.doc__updated { margin-top: 14px; font-size: 14px; color: var(--text-faint); }
+
+/* the three documents, one switch */
+.tabs {
+  display: flex; gap: 4px; margin-top: 32px; padding: 4px;
+  width: fit-content; max-width: 100%;
+  background: var(--surface); border: 1px solid var(--divider); border-radius: 14px;
+}
+.tabs a {
+  flex: none; padding: 9px 16px; border-radius: 10px;
+  font-size: 14px; font-weight: 600; color: var(--text-muted); text-decoration: none;
+  transition: color 0.2s, background-color 0.2s;
+}
+.tabs a:hover { color: var(--text); }
+.tabs a[aria-current="page"] { background: var(--surface-strong); color: var(--text); }
+@media (max-width: 480px) {
+  .tabs { width: 100%; }
+  .tabs a { flex: 1; text-align: center; padding-inline: 8px; }
+}
+
+.summary {
+  margin-top: 40px; padding: clamp(20px, 3.5vw, 28px);
+  background: var(--surface); border: 1px solid var(--divider); border-radius: var(--radius);
+}
+.summary h2 { font-size: 15px; letter-spacing: 0.01em; color: var(--text); }
+.summary ul { margin: 12px 0 0; }
+.summary li { color: var(--text-body); }
+
+.body { margin-top: 16px; color: var(--text-body); font-size: 16.5px; line-height: 1.75; }
+.body h2 {
+  margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--divider);
+  font-size: clamp(20px, 2.6vw, 23px); line-height: 1.3; letter-spacing: -0.015em;
+}
+.body h3 { margin-top: 28px; font-size: 17px; line-height: 1.4; }
+.body p { margin-top: 14px; }
+.body h2 + p, .body h3 + p { margin-top: 12px; }
+.body strong { color: var(--text); font-weight: 600; }
+.body a, .summary a { color: var(--text); text-decoration-color: var(--text-faint); text-underline-offset: 3px; }
+.body a:hover, .summary a:hover { text-decoration-color: var(--text); }
+.body code {
+  padding: 2px 6px; border-radius: 6px; background: var(--surface-strong);
+  font: 500 0.88em/1 ui-monospace, "SF Mono", Consolas, monospace; color: var(--text);
+  overflow-wrap: anywhere;
+}
+ul.list, .summary ul { padding-left: 1.2em; }
+ul.list { margin: 12px 0 0; }
+ul.list li, .summary li { margin-top: 8px; padding-left: 4px; }
+ul.list li::marker, .summary li::marker { color: var(--text-faint); }
+
+/* a fact table: stacks into labelled rows on a phone */
+.facts { margin-top: 18px; width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.6; }
+.facts th, .facts td { padding: 14px 16px 14px 0; text-align: left; vertical-align: top; border-bottom: 1px solid var(--divider); }
+.facts th { font-size: 13px; font-weight: 600; color: var(--text-faint); }
+.facts td:first-child { color: var(--text); font-weight: 600; white-space: nowrap; }
+@media (max-width: 640px) {
+  .facts, .facts tbody, .facts tr, .facts td { display: block; width: 100%; }
+  .facts thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .facts tr { padding: 14px 0; border-bottom: 1px solid var(--divider); }
+  .facts td { padding: 2px 0; border: 0; white-space: normal; }
+  .facts td:first-child { white-space: normal; }
+  .facts td[data-label]::before {
+    content: attr(data-label) " · "; font-size: 13px; font-weight: 600; color: var(--text-faint);
+  }
+}
+
+/* ─── footer, as on the home page ─────────────────────────────────────────── */
+
+.foot { border-top: 1px solid var(--divider); padding-inline: var(--gutter); }
+.foot__in {
+  max-width: 1280px; margin: 0 auto; padding-block: 28px;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px 28px;
+  font-size: 13px; color: var(--text-faint);
+}
+.foot__links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 24px; }
+.foot__links a { text-decoration: none; }
+.foot__links a:hover, .foot__links a[aria-current="page"] { color: var(--text); }
+.foot__tag { justify-self: end; display: inline-flex; align-items: center; gap: 10px; color: var(--text-muted); }
+.foot__tag .mark { width: 18px; }
+@media (max-width: 720px) {
+  .foot__in { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; }
+  .foot__tag { justify-self: center; }
+}
+
+/* ─── "email copied" note ─────────────────────────────────────────────────── */
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 60;
+  max-width: calc(100% - 32px); padding: 12px 18px; border-radius: 12px;
+  background: var(--surface-strong); border: 1px solid var(--divider); color: var(--text);
+  font: 600 14px/1.4 var(--font); text-align: center;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  opacity: 0; transform: translate(-50%, 8px); pointer-events: none;
+  transition: opacity 0.2s var(--ease-std), transform 0.2s var(--ease-std);
+}
+.toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav__in">
+    <a class="nav__brand" href="/" aria-label="HudJee home"><img src="/wordmark.png" alt="HudJee" width="94" height="21"></a>
+    <a class="btn" href="/#register">Register interest</a>
+  </div>
+</header>
+
+<main class="doc">
+  <p class="doc__eyebrow">Legal</p>
+  <h1>%TITLE%</h1>
+  <p class="doc__updated">Last updated %UPDATED%</p>
+
+  <nav class="tabs" aria-label="Legal documents">
+    <a href="/privacy" data-page="privacy">Privacy</a>
+    <a href="/cookies" data-page="cookies">Cookies</a>
+    <a href="/terms" data-page="terms">Terms</a>
+  </nav>
+
+%CONTENT%
+</main>
+
+<footer class="foot">
+  <div class="foot__in">
+    <span>© 2026 HudJee</span>
+    <nav class="foot__links" aria-label="Legal and support">
+      <a href="/privacy" data-page="privacy">Privacy</a>
+      <a href="/cookies" data-page="cookies">Cookies</a>
+      <a href="/terms" data-page="terms">Terms</a>
+      <a href="mailto:support@hudjee.com">support@hudjee.com</a>
+    </nav>
+    <span class="foot__tag"><span class="mark" aria-hidden="true"><span class="mark__l"></span><span class="mark__r"></span></span>Practice daily. Rank higher.</span>
+  </div>
+</footer>
+
+<p class="toast" id="toast" role="status" aria-live="polite"></p>
+<script>
+// A mailto link does nothing where no mail app is set up (common on laptops),
+// so clicking one also copies the address. The link still opens a mail app if there is one.
+(() => {
+  const toast = document.getElementById('toast');
+  let hide;
+  function show(text) {
+    toast.textContent = text;
+    toast.classList.add('is-on');
+    clearTimeout(hide);
+    hide = setTimeout(() => toast.classList.remove('is-on'), 3200);
+  }
+  // In-app browsers (Instagram, Telegram) can refuse the clipboard API; fall back to the old way.
+  function copyOldWay(text) {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.appendChild(area);
+    area.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    area.remove();
+    return ok;
+  }
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('a[href^="mailto:"]');
+    if (!link) return;
+    const email = decodeURIComponent(link.getAttribute('href').slice(7).split('?')[0]);
+    const done = (ok) => show(ok ? `Email address copied: ${email}` : `Email us at ${email}`);
+    if (navigator.clipboard) navigator.clipboard.writeText(email).then(() => done(true), () => done(copyOldWay(email)));
+    else done(copyOldWay(email));
+  });
+})();
+</script>
+</body>
+</html>

@@ -84,4 +84,42 @@ await mkdir(here('./dist'), { recursive: true });
 await cp(here('./public'), here('./dist'), { recursive: true });
 await writeFile(here('./dist/index.html'), html);
 
+// The legal pages: one shell (src/legal/_shell.html) around each page's body,
+// written to dist/<slug>/index.html so they're served at /privacy, /cookies, /terms.
+const LEGAL = [
+  {
+    slug: 'privacy',
+    title: 'Privacy Policy',
+    description: 'What HudJee collects when you pre-register, why, who handles it, and how to see or delete it.',
+  },
+  {
+    slug: 'cookies',
+    title: 'Cookie Policy',
+    description: 'HudJee’s website sets no cookies. Here is the one thing it saves in your browser, and why.',
+  },
+  {
+    slug: 'terms',
+    title: 'Terms of Use',
+    description: 'The terms for using hudjee.com and pre-registering for the HudJee app.',
+  },
+];
+const UPDATED = '1 October 2026';
+const shell = await readFile(here('./src/legal/_shell.html'), 'utf8');
+for (const page of LEGAL) {
+  const body = await readFile(here(`./src/legal/${page.slug}.html`), 'utf8');
+  // Functions, not strings, as replacements: page text may contain "$".
+  const out = shell
+    .replace('%CONTENT%', () => body)
+    .replaceAll('%TITLE%', () => page.title)
+    .replaceAll('%DESCRIPTION%', () => page.description)
+    .replaceAll('%UPDATED%', () => UPDATED)
+    .replaceAll('%SLUG%', () => page.slug)
+    .replaceAll('%SITE_URL%', () => siteUrl)
+    .replaceAll(`data-page="${page.slug}"`, `data-page="${page.slug}" aria-current="page"`);
+  const left = out.match(/%[A-Z_]+%/);
+  if (left) fail(`src/legal/${page.slug}.html still has ${left[0]} after the build.`);
+  await mkdir(here(`./dist/${page.slug}`), { recursive: true });
+  await writeFile(here(`./dist/${page.slug}/index.html`), out);
+}
+
 console.log(`Built apps/web/dist for ${siteUrl}: ${config ? `saving to ${new URL(supabaseUrl).host}` : 'preview, saves nothing'}.`);

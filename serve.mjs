@@ -29,7 +29,9 @@ createServer(async (req, res) => {
     res.writeHead(400).end();
     return;
   }
+  // /privacy is dist/privacy/index.html, as the host serves it.
   if (path.endsWith('/')) path += 'index.html';
+  else if (!extname(path)) path += '/index.html';
   const file = normalize(join(root, path));
   if (!file.startsWith(root.endsWith(sep) ? root : root + sep)) {
     res.writeHead(403).end();
