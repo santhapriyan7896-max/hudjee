@@ -1,7 +1,7 @@
 /**
  * ──────────────────────────────────────────────────────────────────
  *  notify-signup — fires once per waitlist row and sends a welcome to
- *  the student who just joined, with their queue position.
+ *  the student who just joined.
  *
  *  It can also tell you about each signup (to NOTIFY_TO), but that's
  *  off unless NOTIFY_SIGNUPS=on: new signups are in the dashboard.
@@ -62,6 +62,8 @@ declare const Deno: {
   env: { get(key: string): string | undefined };
   serve(handler: (req: Request) => Response | Promise<Response>): void;
 };
+/* Supabase's runtime: keeps a promise running after the response. */
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
 interface WaitlistRow {
   id: string;
@@ -79,73 +81,88 @@ const BATCH_LABELS: Record<string, string> = {
 };
 
 /* ── Brand ─────────────────────────────────────────────────────────
-   Deliberately flat colours, no gradients. Gmail strips
-   `-webkit-background-clip:text`, and gradient text without it
-   renders as transparent — i.e. invisible. Solid or nothing. */
+   The app's own palette (theme/ui.ts, as on hudjee.com): near-black,
+   three surface steps, white and grey text. The ramp's two ends
+   (indigo, brass) only ever mark today's day box. Flat colours only:
+   Gmail strips background-clip:text, and gradients don't survive
+   Outlook. */
 const C = {
   bg: '#0A0A0C',
-  card: '#131217',
-  border: '#27262B',
+  card: '#131317',
+  inset: '#1B1B20',
+  day: '#232329',
+  border: '#26262C',
   text: '#FFFFFF',
-  dim: '#A7A9B0',
-  faint: '#75787F',
-  purple: '#7B68E8',
-  lilac: '#A99BF2',
-  amber: '#C9A17C',
+  muted: '#9CA3AF',
+  faint: '#838A96',
+  indigo: '#6D5DF6',
+  brass: '#C99A6B',
+  ink: '#0A0A0C',
 };
 
 const esc = (v: unknown) =>
-  String(v ?? '—')
+  String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
-/** First name only — "Hey Priya" reads better than "Hey Priya Sharma". */
+/** First name only — "You're in, Priya." reads better than the full name. */
 const firstName = (n: string | null) => {
   const first = String(n ?? '').trim().split(/\s+/)[0] ?? '';
   return first.length > 1 && first.length <= 24 ? first : '';
 };
 
-const FONT = `-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif`;
+/* Montserrat where the mail app loads web fonts (Apple Mail, iOS),
+   the system face everywhere else. */
+const FONT = `Montserrat,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif`;
+
+/** What's waiting: each line is something hudjee.com already says. */
+const WAITING: [string, string][] = [
+  ['Practice that adapts', 'Every answer sets the next question, so each one is pitched at your level.'],
+  ['Mock tests marked like JEE', 'Full JEE Main papers at +4 and −1, or one subject in an hour.'],
+  ['Mistakes that come back', 'Questions you got wrong return for revision before the exam does.'],
+  ['Know where you stand', 'A readiness score out of 100 every morning, and a daily goal you can keep.'],
+];
+
+type Links = { site: string; telegram: string; privacy: string; asset: (p: string) => string };
 
 /* ────────────────────────────────────────────────────────────────
    The welcome email.
-   Table-based layout, inline styles, no external images and no web
-   fonts — that combination is what survives Gmail, Outlook and the
-   iOS Mail dark-mode filter intact.
+   Table layout and inline styles throughout: that's what Gmail,
+   Outlook and iOS Mail's dark mode all leave alone. The two images
+   (the mark and the wordmark) come from hudjee.com and carry alt
+   text, so a client that blocks images still reads "HudJee".
    ──────────────────────────────────────────────────────────────── */
-function welcomeHtml(row: WaitlistRow, position: number | null, links: { site: string; telegram: string }) {
+function welcomeHtml(row: WaitlistRow, links: Links) {
   const who = firstName(row.name);
-  const hello = who ? `You're in, ${esc(who)}.` : `You're in.`;
-  const batch = row.batch ? BATCH_LABELS[row.batch] ?? row.batch : null;
+  const hello = who ? `You’re in, ${esc(who)}.` : `You’re in.`;
 
-  const positionBlock = position
-    ? `
-      <tr><td style="padding:0 0 26px">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
-               style="background:#191822;border:1px solid ${C.border};border-radius:16px">
-          <tr>
-            <td style="padding:18px 20px">
-              <div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;
-                          font-weight:700;color:${C.faint};padding-bottom:6px">Your place in the queue</div>
-              <div style="font-size:30px;line-height:1;font-weight:800;color:${C.lilac}">
-                #${position.toLocaleString('en-IN')}
-              </div>
-            </td>
-          </tr>
-        </table>
-      </td></tr>`
-    : '';
+  // the first week: today outlined, the rest days to come
+  const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const week = days.map((d, i) => `
+                  <td align="center" valign="top" style="padding:0 3px">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+                      <td width="30" height="30" style="${
+                        i === 0
+                          // the border sits inside the 30px, as the other days' fill does
+                          ? `width:26px;height:26px;border:2px solid ${C.brass};background:${C.bg}`
+                          : `width:30px;height:30px;background:${C.day}`
+                      };border-radius:8px;font-size:0;line-height:0">&nbsp;</td>
+                    </tr></table>
+                    <div style="padding-top:7px;font-family:${FONT};font-size:11px;font-weight:700;color:${
+                      i === 0 ? C.text : C.faint
+                    }">${d}</div>
+                  </td>`).join('');
 
-  const point = (n: string, title: string, body: string) => `
-    <tr>
-      <td width="30" valign="top" style="padding:0 0 16px">
-        <div style="font-size:13px;font-weight:800;color:${C.amber}">${n}</div>
-      </td>
-      <td valign="top" style="padding:0 0 16px">
-        <div style="font-size:15px;font-weight:700;color:${C.text};padding-bottom:3px">${title}</div>
-        <div style="font-size:14px;line-height:21px;color:${C.dim}">${body}</div>
-      </td>
-    </tr>`;
+  const waiting = WAITING.map(([title, body]) => `
+              <tr>
+                <td width="22" valign="top" style="padding:5px 0 18px">
+                  <div style="width:10px;height:10px;border-radius:3px;background:${C.text};font-size:0;line-height:0">&nbsp;</div>
+                </td>
+                <td valign="top" style="padding:0 0 18px;font-family:${FONT}">
+                  <div style="font-size:15px;line-height:21px;font-weight:700;color:${C.text}">${title}</div>
+                  <div style="padding-top:3px;font-size:14px;line-height:21px;color:${C.muted}">${body}</div>
+                </td>
+              </tr>`).join('');
 
   return `<!doctype html>
 <html lang="en"><head>
@@ -153,102 +170,122 @@ function welcomeHtml(row: WaitlistRow, position: number | null, links: { site: s
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
 <meta name="supported-color-schemes" content="dark">
-<title>You're on the HudJee waitlist</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>You’re on the HudJee list</title>
+<style>
+  @media (max-width: 480px) {
+    .card { padding: 28px 22px !important; }
+    .h1 { font-size: 27px !important; line-height: 33px !important; }
+  }
+</style>
 </head>
-<body style="margin:0;padding:0;background:${C.bg}">
+<body style="margin:0;padding:0;background:${C.bg};-webkit-text-size-adjust:100%">
 <!-- Preview text: what shows next to the subject in the inbox list. -->
-<div style="display:none;max-height:0;overflow:hidden;opacity:0">
-  20 questions a day, ranked every morning at 5 AM. Here's what happens next.
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:${C.bg}">
+  We’ll write the day HudJee opens on Android and iPhone. Here’s what’s waiting for you.
 </div>
 
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
-       style="background:${C.bg};padding:32px 16px">
-  <tr><td align="center">
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
-           style="max-width:520px;width:100%">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${C.bg}"
+       style="background:${C.bg}">
+  <tr><td align="center" style="padding:36px 16px 40px">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;width:100%">
 
-      <!-- Wordmark -->
-      <tr><td style="padding:0 4px 18px;font-family:${FONT}">
-        <span style="font-size:17px;font-weight:800;color:${C.text};letter-spacing:-.3px">Hud</span><span
-              style="font-size:17px;font-weight:800;color:${C.amber};letter-spacing:-.3px">Jee</span>
-        <span style="font-size:11px;font-weight:700;color:${C.faint};letter-spacing:1.3px;
-                     text-transform:uppercase;padding-left:8px">Practice Daily</span>
+      <!-- The mark and the wordmark -->
+      <tr><td style="padding:0 4px 22px">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+          <td valign="middle" style="padding-right:12px">
+            <img src="${links.asset('/apple-touch-icon.png')}" width="36" height="36" alt=""
+                 style="display:block;width:36px;height:36px;border:0;border-radius:9px">
+          </td>
+          <td valign="middle">
+            <img src="${links.asset('/wordmark.png')}" width="94" height="21" alt="HudJee"
+                 style="display:block;width:94px;height:21px;border:0;font-family:${FONT};font-size:20px;font-weight:700;color:${C.text}">
+          </td>
+        </tr></table>
       </td></tr>
 
       <!-- Card -->
-      <tr><td style="background:${C.card};border:1px solid ${C.border};border-radius:22px;
-                     padding:30px 26px;font-family:${FONT}">
+      <tr><td class="card" bgcolor="${C.card}"
+              style="background:${C.card};border:1px solid ${C.border};border-radius:24px;padding:36px 32px">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
 
-          <tr><td style="padding:0 0 8px">
-            <div style="font-size:11px;letter-spacing:1.6px;text-transform:uppercase;
-                        font-weight:800;color:${C.purple}">Waitlist confirmed</div>
+          <tr><td style="padding:0 0 14px;font-family:${FONT}">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+              <td valign="middle" style="padding-right:9px">
+                <div style="width:9px;height:9px;border-radius:3px;border:2px solid ${C.indigo};font-size:0;line-height:0">&nbsp;</div>
+              </td>
+              <td valign="middle" style="font-size:11px;letter-spacing:1.6px;text-transform:uppercase;font-weight:700;color:${C.muted}">
+                You’re on the list
+              </td>
+            </tr></table>
           </td></tr>
 
-          <tr><td style="padding:0 0 14px">
-            <h1 style="margin:0;font-size:27px;line-height:33px;font-weight:800;
-                       color:${C.text};letter-spacing:-.5px">${hello}</h1>
+          <tr><td style="padding:0 0 14px;font-family:${FONT}">
+            <h1 class="h1" style="margin:0;font-size:32px;line-height:38px;font-weight:800;letter-spacing:-0.8px;color:${C.text}">${hello}</h1>
           </td></tr>
 
-          <tr><td style="padding:0 0 24px">
-            <p style="margin:0;font-size:15px;line-height:23px;color:${C.dim}">
-              You'll be among the first to practise on HudJee — 20 adaptive questions a day
-              from real past papers, with your Readiness Score and rank recomputed every
-              morning at 5 AM.
-            </p>
+          <tr><td style="padding:0 0 28px;font-family:${FONT};font-size:16px;line-height:25px;color:${C.muted}">
+            HudJee is JEE practice that adapts to every answer. We’ll email you the day it opens
+            on Android and iPhone, so you can start on day one.
           </td></tr>
 
-          ${positionBlock}
-
-          <tr><td style="padding:0 0 14px;border-top:1px solid ${C.border};padding-top:24px">
-            <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
-                        font-weight:800;color:${C.faint}">What happens next</div>
-          </td></tr>
-
-          <tr><td style="padding:0 0 10px">
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-              ${point('01', 'One email, when it matters',
-                `Your invite lands in this inbox with the Play Store link. No drip campaign, no weekly newsletter.`)}
-              ${point('02', 'Invites go out in waves',
-                batch
-                  ? `Starting with the batches closest to the exam. You're down as <span style="color:${C.text};font-weight:700">${esc(batch)}</span> — we'll slot you into that wave.`
-                  : `Starting with the batches closest to the exam. Reply with your batch and we'll slot you into the right wave.`)}
-              ${point('03', 'Free through the beta',
-                `Every feature, no card. Android first — iOS follows once the Android build is stable, and you'll hear either way.`)}
-            </table>
-          </td></tr>
-
-          <!-- Telegram CTA -->
-          <tr><td style="padding:14px 0 0;border-top:1px solid ${C.border}">
-            <p style="margin:0 0 16px;font-size:14px;line-height:21px;color:${C.dim}">
-              Don't want to wait quietly? Daily question drops and overnight rank movement
-              happen in the Telegram — most of the waitlist is already in there.
-            </p>
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-              <tr><td style="background:${C.purple};border-radius:12px">
-                <a href="${esc(links.telegram)}"
-                   style="display:inline-block;padding:13px 24px;font-family:${FONT};
-                          font-size:15px;font-weight:800;color:#FFFFFF;text-decoration:none">
-                  Join the Telegram
-                </a>
+          <!-- Day one -->
+          <tr><td style="padding:0 0 30px">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${C.inset}"
+                   style="background:${C.inset};border-radius:18px">
+              <tr><td style="padding:20px 18px 18px;font-family:${FONT}">
+                <div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;color:${C.faint};padding:0 3px 14px">
+                  Your first week
+                </div>
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>${week}
+                </tr></table>
+                <div style="padding:16px 3px 0;font-size:14px;line-height:21px;color:${C.muted}">
+                  <span style="color:${C.text};font-weight:700">Day one starts when HudJee opens.</span>
+                  Twenty questions and about thirty minutes a day is all it asks.
+                </div>
               </td></tr>
             </table>
+          </td></tr>
+
+          <tr><td style="padding:0 0 16px;font-family:${FONT};font-size:11px;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;color:${C.faint}">
+            What’s waiting for you
+          </td></tr>
+          <tr><td>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">${waiting}
+            </table>
+          </td></tr>
+
+          <!-- Button -->
+          <tr><td style="padding:10px 0 0">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+              <td bgcolor="${C.text}" style="background:${C.text};border-radius:14px">
+                <a href="${esc(links.site)}"
+                   style="display:inline-block;padding:15px 26px;font-family:${FONT};font-size:15px;font-weight:700;
+                          letter-spacing:-0.2px;color:${C.ink};text-decoration:none;border-radius:14px">
+                  See how HudJee works&nbsp;&nbsp;→
+                </a>
+              </td>
+            </tr></table>
+          </td></tr>
+
+          <tr><td style="padding:22px 0 0;font-family:${FONT};font-size:14px;line-height:21px;color:${C.muted}">
+            Want company while you wait?
+            <a href="${esc(links.telegram)}" style="color:${C.text};font-weight:700;text-decoration:underline">Practise with the batch on Telegram</a>.
           </td></tr>
 
         </table>
       </td></tr>
 
       <!-- Footer -->
-      <tr><td style="padding:20px 6px 0;font-family:${FONT}">
-        <p style="margin:0 0 8px;font-size:12px;line-height:18px;color:${C.faint}">
-          You're getting this because you joined the waitlist at
-          <a href="${esc(links.site)}" style="color:${C.dim};text-decoration:underline">hudjee.com</a>.
-          Your email is used for beta invites and product updates only — never sold, never
-          shared with coaching institutes.
-        </p>
-        <p style="margin:0;font-size:12px;line-height:18px;color:${C.faint}">
-          Reply "remove" to this email and you're off the list. No hard feelings.
-        </p>
+      <tr><td style="padding:24px 8px 0;font-family:${FONT};font-size:12px;line-height:19px;color:${C.faint}">
+        You’re getting this because this address was pre-registered at
+        <a href="${esc(links.site)}" style="color:${C.muted};text-decoration:underline">hudjee.com</a>.
+        We’ll only write about HudJee’s launch, and we never share your email.
+        Not you, or changed your mind? Reply “remove” and you’re off the list.
+      </td></tr>
+      <tr><td style="padding:12px 8px 0;font-family:${FONT};font-size:12px;line-height:19px;color:${C.faint}">
+        <a href="${esc(links.privacy)}" style="color:${C.muted};text-decoration:underline">Privacy</a>
+        &nbsp;·&nbsp; © ${new Date().getFullYear()} HudJee &nbsp;·&nbsp; Practice daily. Rank higher.
       </td></tr>
 
     </table>
@@ -259,36 +296,33 @@ function welcomeHtml(row: WaitlistRow, position: number | null, links: { site: s
 
 /** Plain-text alternative. Not optional — a dark HTML-only email with
     no text part is a reliable way into the spam folder. */
-function welcomeText(row: WaitlistRow, position: number | null, links: { site: string; telegram: string }) {
+function welcomeText(row: WaitlistRow, links: Links) {
   const who = firstName(row.name);
-  const batch = row.batch ? BATCH_LABELS[row.batch] ?? row.batch : null;
   return [
     who ? `You're in, ${who}.` : `You're in.`,
     ``,
-    `You'll be among the first to practise on HudJee - 20 adaptive questions a day from real`,
-    `past papers, with your Readiness Score and rank recomputed every morning at 5 AM.`,
+    `HudJee is JEE practice that adapts to every answer. We'll email you the day it opens`,
+    `on Android and iPhone, so you can start on day one.`,
     ``,
-    position ? `Your place in the queue: #${position.toLocaleString('en-IN')}` : ``,
+    `Day one starts when HudJee opens. Twenty questions and about thirty minutes a day`,
+    `is all it asks.`,
     ``,
-    `WHAT HAPPENS NEXT`,
-    `01. One email, when it matters. Your invite lands in this inbox with the Play Store`,
-    `    link. No drip campaign, no weekly newsletter.`,
-    `02. Invites go out in waves, starting with the batches closest to the exam.` +
-      (batch ? ` You're down as ${batch}.` : ` Reply with your batch and we'll slot you in.`),
-    `03. Free through the beta. Every feature, no card. Android first; iOS follows.`,
+    `WHAT'S WAITING FOR YOU`,
+    ...WAITING.map(([title, body]) => `- ${title}: ${body}`),
     ``,
-    `Daily question drops and overnight rank movement happen in the Telegram:`,
-    links.telegram,
+    `See how HudJee works: ${links.site}`,
+    `Practise with the batch on Telegram: ${links.telegram}`,
     ``,
     `--`,
-    `You're getting this because you joined the waitlist at ${links.site}`,
-    `Your email is used for beta invites and product updates only.`,
-    `Reply "remove" and you're off the list.`,
-  ].filter((l) => l !== undefined).join('\n');
+    `You're getting this because this address was pre-registered at hudjee.com.`,
+    `We'll only write about HudJee's launch, and we never share your email.`,
+    `Not you, or changed your mind? Reply "remove" and you're off the list.`,
+    `Privacy: ${links.privacy}`,
+  ].join('\n');
 }
 
 /** The internal notification. Plain and scannable — it's a log line. */
-function notifyHtml(row: WaitlistRow, position: number | null, when: string) {
+function notifyHtml(row: WaitlistRow, when: string) {
   const batch = row.batch ? BATCH_LABELS[row.batch] ?? row.batch : 'Not specified';
   const cell = (k: string, v: string) => `
     <tr><td style="padding:9px 0;color:${C.faint};width:104px;font-size:14px">${k}</td>
@@ -298,43 +332,16 @@ function notifyHtml(row: WaitlistRow, position: number | null, when: string) {
     <div style="max-width:520px;margin:0 auto;background:${C.card};border:1px solid ${C.border};
                 border-radius:22px;padding:26px">
       <div style="font-size:11px;letter-spacing:1.6px;text-transform:uppercase;
-                  font-weight:800;color:${C.purple}">New waitlist signup</div>
-      <h1 style="margin:10px 0 22px;font-size:24px;font-weight:800;color:${C.text}">${esc(row.name)}</h1>
+                  font-weight:800;color:${C.indigo}">New waitlist signup</div>
+      <h1 style="margin:10px 0 22px;font-size:24px;font-weight:800;color:${C.text}">${esc(row.name ?? row.email)}</h1>
       <table style="width:100%;border-collapse:collapse">
         ${cell('Email', esc(row.email))}
         ${cell('Batch', esc(batch))}
         ${cell('Source', esc(row.source))}
         ${cell('Joined', `${esc(when)} IST`)}
-        ${position ? cell('Position', `#${position.toLocaleString('en-IN')}`) : ''}
       </table>
     </div>
   </div>`;
-}
-
-/* ── Queue position ────────────────────────────────────────────────
-   Read with the service-role key, which Supabase injects into every
-   Edge Function automatically. Never a blocker: if this fails the
-   emails still go out, just without the number. */
-async function fetchPosition(email: string): Promise<number | null> {
-  const url = Deno.env.get('SUPABASE_URL');
-  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (!url || !key) return null;
-  try {
-    const res = await fetch(`${url}/rest/v1/rpc/waitlist_position`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify({ p_email: email }),
-    });
-    if (!res.ok) return null;
-    const n = await res.json();
-    return typeof n === 'number' && n > 0 ? n : null;
-  } catch {
-    return null;
-  }
 }
 
 /* ── Sending ───────────────────────────────────────────────────────
@@ -375,7 +382,7 @@ async function send(
   provider: Provider,
   apiKey: string,
   mail: Mail,
-): Promise<{ ok: boolean; detail?: string }> {
+): Promise<{ ok: boolean; detail?: string; messageId?: string }> {
   const url = provider === 'brevo'
     ? 'https://api.brevo.com/v3/smtp/email'
     : 'https://api.resend.com/emails';
@@ -404,10 +411,36 @@ async function send(
 
   try {
     const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
-    if (res.ok) return { ok: true };
+    if (res.ok) {
+      // Brevo answers { messageId }, Resend { id }: kept so the delivery can be traced
+      const sent = await res.json().catch(() => ({}));
+      return { ok: true, messageId: sent.messageId ?? sent.id };
+    }
     return { ok: false, detail: `${provider} ${res.status} ${await res.text()}` };
   } catch (err) {
     return { ok: false, detail: `${provider} threw: ${String(err)}` };
+  }
+}
+
+/* ── Delivery trace ────────────────────────────────────────────────
+   "Accepted" only means Brevo queued the email. Twenty seconds later,
+   ask Brevo what became of it (delivered, deferred, bounced, blocked,
+   spam…) and write that to the function's logs, reason included. */
+const domainOf = (addr: string) => parseAddress(addr).email.split('@')[1] ?? '?';
+
+async function traceBrevo(apiKey: string, messageId: string, label: string) {
+  await new Promise((r) => setTimeout(r, 20000));
+  try {
+    const q = new URLSearchParams({ messageId, limit: '20', sort: 'desc' });
+    const res = await fetch(`https://api.brevo.com/v3/smtp/statistics/events?${q}`, {
+      headers: { 'api-key': apiKey, accept: 'application/json' },
+    });
+    const body = await res.json().catch(() => ({}));
+    const events = (body.events ?? []).map((e: { event: string; reason?: string }) =>
+      e.reason ? `${e.event} (${e.reason})` : e.event);
+    console.log(`${label} delivery: ${res.status} ${events.length ? events.join(', ') : 'no events yet'}`);
+  } catch (err) {
+    console.log(`${label} delivery: trace failed: ${String(err)}`);
   }
 }
 
@@ -433,9 +466,12 @@ Deno.serve(async (req: Request) => {
   const notifyFrom = Deno.env.get('NOTIFY_FROM') ?? 'HudJee <hello@hudjee.com>';
   const welcomeFrom = Deno.env.get('WELCOME_FROM') ?? notifyFrom;
   const replyTo = Deno.env.get('REPLY_TO') ?? 'hello@hudjee.com';
-  const links = {
-    site: Deno.env.get('SITE_URL') ?? 'https://www.hudjee.com',
+  const site = (Deno.env.get('SITE_URL') ?? 'https://www.hudjee.com').replace(/\/+$/, '');
+  const links: Links = {
+    site,
     telegram: Deno.env.get('TELEGRAM_URL') ?? 'https://t.me/hudjee',
+    privacy: `${site}/privacy`,
+    asset: (path) => `${site}${path}`,
   };
 
   let row: WaitlistRow;
@@ -447,7 +483,6 @@ Deno.serve(async (req: Request) => {
   }
   if (!row?.email) return new Response('no email in payload', { status: 400 });
 
-  const position = await fetchPosition(row.email);
   const when = new Date(row.created_at ?? Date.now()).toLocaleString('en-IN', {
     timeZone: 'Asia/Kolkata',
     dateStyle: 'medium',
@@ -466,11 +501,9 @@ Deno.serve(async (req: Request) => {
       from: welcomeFrom,
       to: row.email,
       replyTo: replyTo,
-      subject: position
-        ? `You're on the HudJee waitlist — #${position.toLocaleString('en-IN')}`
-        : `You're on the HudJee waitlist`,
-      html: welcomeHtml(row, position, links),
-      text: welcomeText(row, position, links),
+      subject: `You’re on the HudJee list`,
+      html: welcomeHtml(row, links),
+      text: welcomeText(row, links),
     }),
     notifyOn
       ? send(provider, apiKey, {
@@ -478,7 +511,7 @@ Deno.serve(async (req: Request) => {
           to: notifyTo,
           replyTo: row.email,
           subject: `New HudJee signup — ${row.name ?? row.email}`,
-          html: notifyHtml(row, position, when),
+          html: notifyHtml(row, when),
         })
       : null,
   ]);
@@ -486,8 +519,14 @@ Deno.serve(async (req: Request) => {
   if (!welcome.ok) console.error('welcome email failed:', welcome.detail);
   if (notify && !notify.ok) console.error('notify email failed:', notify.detail);
 
+  // which sender, to which mailbox provider; then what Brevo did with it
+  console.log(`welcome accepted=${welcome.ok} from=@${domainOf(welcomeFrom)} to=@${domainOf(row.email)} id=${welcome.messageId ?? '-'}`);
+  if (provider === 'brevo' && welcome.ok && welcome.messageId && typeof EdgeRuntime !== 'undefined') {
+    EdgeRuntime.waitUntil(traceBrevo(apiKey, welcome.messageId, 'welcome'));
+  }
+
   return new Response(
-    JSON.stringify({ ok: true, provider, welcome: welcome.ok, notify: notify ? notify.ok : 'off', position }),
+    JSON.stringify({ ok: true, provider, welcome: welcome.ok, notify: notify ? notify.ok : 'off' }),
     { status: 200, headers: { 'Content-Type': 'application/json' } },
   );
 });
