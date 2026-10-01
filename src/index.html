@@ -530,6 +530,32 @@ img { display: block; max-width: 100%; }
 @media (max-width: 640px) {
   .stage { aspect-ratio: 4 / 5; border-radius: 22px; }
 }
+/* One column: read as one continuous page rather than a deck of full-screen
+   slides. One background throughout, tighter bands, and each feature says
+   what it is before it shows it. */
+@media (max-width: 900px) {
+  .band, .band--raised {
+    background: var(--bg);
+    --panel: var(--surface); --panel-2: var(--surface-subtle); --panel-3: var(--surface-strong);
+  }
+  .band { padding-block: clamp(44px, 9vw, 72px); }
+  .head { gap: 12px; }
+  .stage { margin-top: 28px; box-shadow: 0 0 0 1px var(--divider); }
+  .feature__in { gap: 20px; }
+  .feature .copy { order: -1; justify-self: start; gap: 12px; max-width: 560px; }
+  .copy p { font-size: 16px; line-height: 1.62; }
+  .learn { gap: 24px; }
+  .cta { padding-block: 48px 72px; }
+}
+@media (max-width: 560px) {
+  .hero { padding-block: 28px 32px; }
+  .hero__title { margin-top: 18px; }
+  /* the rotator already keeps a second line free for the longer phrases */
+  .hero__cta { margin-top: 8px; }
+  .hero__more { margin-top: 28px; }
+  .h2 { font-size: 28px; }
+  .h3 { font-size: 25px; }
+}
 @media (max-width: 720px) {
   .foot__in { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; }
   .foot__tag { justify-self: center; }
