@@ -1,11 +1,10 @@
 /**
  * ──────────────────────────────────────────────────────────────────
- *  notify-signup — fires once per waitlist row and sends two emails:
+ *  notify-signup — fires once per waitlist row and sends a welcome to
+ *  the student who just joined, with their queue position.
  *
- *    1. A welcome to the student who just joined, with their queue
- *       position.
- *    2. A notification to hudjee26@gmail.com so you see signups
- *       without opening the dashboard.
+ *  It can also tell you about each signup (to NOTIFY_TO), but that's
+ *  off unless NOTIFY_SIGNUPS=on: new signups are in the dashboard.
  *
  *  Triggered by a Supabase Database Webhook on INSERT into
  *  public.waitlist. Runs on Supabase Edge Functions (Deno).
@@ -24,7 +23,8 @@
  *  cannot create MX records on a subdomain — which is exactly what
  *  Resend needs on send.hudjee.com to verify the domain. Brevo
  *  authenticates with TXT/CNAME records only, so it works on Wix DNS
- *  as-is. Free tier is 300 emails/day; each signup costs 2.
+ *  as-is. Free tier is 300 emails/day; each signup costs 1 (2 with
+ *  NOTIFY_SIGNUPS=on).
  *
  *  When hudjee.com comes off its transfer lock and DNS moves to a
  *  provider that does subdomain MX, flip back with one command:
@@ -43,6 +43,7 @@
  *    WEBHOOK_SECRET   any long random string, also set on the webhook
  *
  *  Optional:
+ *    NOTIFY_SIGNUPS   'on' to also email NOTIFY_TO about each signup
  *    EMAIL_PROVIDER   'brevo' | 'resend' — overrides auto-detection
  *    REPLY_TO         defaults to hello@hudjee.com
  *    SITE_URL         defaults to https://www.hudjee.com
@@ -453,6 +454,9 @@ Deno.serve(async (req: Request) => {
     timeStyle: 'short',
   });
 
+  // The note to you is opt-in; the student's welcome always goes.
+  const notifyOn = Deno.env.get('NOTIFY_SIGNUPS')?.trim().toLowerCase() === 'on';
+
   // Both go out together. The student's email is the one that matters,
   // so a failure on either is logged rather than allowed to cancel the
   // other — and the webhook is not retried on a partial success, which
@@ -468,20 +472,22 @@ Deno.serve(async (req: Request) => {
       html: welcomeHtml(row, position, links),
       text: welcomeText(row, position, links),
     }),
-    send(provider, apiKey, {
-      from: notifyFrom,
-      to: notifyTo,
-      replyTo: row.email,
-      subject: `New HudJee signup — ${row.name ?? row.email}`,
-      html: notifyHtml(row, position, when),
-    }),
+    notifyOn
+      ? send(provider, apiKey, {
+          from: notifyFrom,
+          to: notifyTo,
+          replyTo: row.email,
+          subject: `New HudJee signup — ${row.name ?? row.email}`,
+          html: notifyHtml(row, position, when),
+        })
+      : null,
   ]);
 
   if (!welcome.ok) console.error('welcome email failed:', welcome.detail);
-  if (!notify.ok) console.error('notify email failed:', notify.detail);
+  if (notify && !notify.ok) console.error('notify email failed:', notify.detail);
 
   return new Response(
-    JSON.stringify({ ok: true, provider, welcome: welcome.ok, notify: notify.ok, position }),
+    JSON.stringify({ ok: true, provider, welcome: welcome.ok, notify: notify ? notify.ok : 'off', position }),
     { status: 200, headers: { 'Content-Type': 'application/json' } },
   );
 });
