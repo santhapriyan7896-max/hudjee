@@ -1,0 +1,1372 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HudJee: JEE practice that adapts to every answer</title>
+<meta name="description" content="Adaptive Physics, Chemistry and Maths practice for JEE Main and Advanced. Pre-register and we’ll tell you the day HudJee opens on Android and iPhone.">
+<meta name="theme-color" content="#0A0A0C">
+<link rel="canonical" href="%SITE_URL%/">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="HudJee">
+<meta property="og:url" content="%SITE_URL%/">
+<meta property="og:title" content="HudJee: JEE practice that adapts to every answer">
+<meta property="og:description" content="Pre-register for launch. Adaptive practice, mock tests marked the way JEE is marked, and an alarm that gets you to the desk.">
+<meta property="og:image" content="%SITE_URL%/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=STIX+Two+Text:ital@0;1&display=swap">
+<style>
+/* Layout: one centred column that opens into alternating two-column bands.
+   Hero with the pre-registration form → a live practice "film" → five
+   feature bands (product UI | copy) → a link list → the form again. Flat
+   near-black, three solid
+   surface steps and white as the accent, as in the app's theme/ui.ts. The
+   indigo→brass ramp only ever outlines the primary action and today's day box. */
+:root {
+  color-scheme: dark;
+  interpolate-size: allow-keywords;
+
+  --bg: #0A0A0C;
+  --surface: #131317;
+  --surface-subtle: #1B1B20;
+  --surface-strong: #232329;
+  --surface-pressed: #28282F;
+  --divider: #26262C;
+  --dot: #3F3F46;
+  --text: #FFFFFF;
+  --text-muted: #9CA3AF;
+  --text-faint: #838A96;
+  --on-light: #0A0A0C;
+  --positive: #5FB48A;
+  --negative: #D4685E;
+  --mark-today: #E5E7EB;
+  --mark-partial: #6B7280;
+  --mark-missed: #4B5563;
+  --mark-future: #2A2A30;
+  --ramp-a: #6D5DF6;
+  --ramp-b: #4A4A63;
+  --ramp-c: #C99A6B;
+  --ramp: linear-gradient(90deg, var(--ramp-a), var(--ramp-b) 50%, var(--ramp-c));
+  --ramp-diag: linear-gradient(135deg, var(--ramp-a), var(--ramp-b) 50%, var(--ramp-c));
+  --shadow: rgba(0, 0, 0, 0.62);
+  --mark-img: url("/mark.webp");
+
+  --font: "Montserrat", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --math: "STIX Two Text", "Cambria Math", "Times New Roman", Times, serif;
+
+  --radius: 18px;
+  --radius-inner: 12px;
+  --radius-btn: 14px;
+  --gutter: clamp(16px, 4vw, 40px);
+  --maxw: 1160px;
+  --ease-emph: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-std: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* what a card sits on; bands re-point these */
+  --panel: var(--surface);
+  --panel-2: var(--surface-subtle);
+  --panel-3: var(--surface-strong);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 16px/1.6 var(--font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+main, footer { overflow-x: clip; }
+h1, h2, h3 { margin: 0; font-weight: 700; color: var(--text); text-wrap: balance; }
+p { margin: 0; text-wrap: pretty; }
+a { color: inherit; }
+img { display: block; max-width: 100%; }
+[hidden] { display: none !important; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; border-radius: 6px; }
+
+.ic {
+  width: 1em; height: 1em; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* ─── buttons ─────────────────────────────────────────────────────────────── */
+
+.btn {
+  --fill: var(--bg);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 46px; padding: 0 22px;
+  border: 1.5px solid transparent; border-radius: var(--radius-btn);
+  font: 700 15px/1 var(--font); letter-spacing: -0.012em;
+  color: var(--text); text-decoration: none; white-space: nowrap;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: transform 0.18s var(--ease-std), background-color 0.2s var(--ease-std);
+}
+.btn:active { transform: scale(0.97); }
+.btn:focus-visible { border-radius: var(--radius-btn); }
+.btn .ic { font-size: 16px; stroke-width: 2.4; }
+/* The app's primary action: the ramp lives in a 1.5px hairline around a page-coloured fill. */
+.btn--ramp { background: linear-gradient(var(--fill), var(--fill)) padding-box, var(--ramp) border-box; }
+.btn--ramp:hover { --fill: var(--surface); }
+.btn--plain { background: var(--surface-subtle); }
+.btn--plain:hover { background: var(--surface-strong); }
+.btn--sm { min-height: 38px; padding: 0 16px; font-size: 14px; border-radius: 12px; }
+
+.ghost {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 40px; padding: 0 16px; border-radius: 12px;
+  background: var(--surface-subtle); color: var(--text-muted);
+  font: 600 14px/1 var(--font); text-decoration: none;
+  transition: color 0.2s, background-color 0.2s;
+}
+.ghost:hover { color: var(--text); background: var(--surface-strong); }
+.ghost .ic { font-size: 15px; }
+
+.fine { font-size: 12.5px; line-height: 1.5; color: var(--text-faint); }
+
+/* ─── nav ─────────────────────────────────────────────────────────────────── */
+
+.nav {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 40;
+  background: var(--bg);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.3s var(--ease-std);
+}
+.nav.is-scrolled { border-bottom-color: var(--divider); }
+.nav__in {
+  max-width: 1280px; height: 64px; margin: 0 auto; padding-inline: var(--gutter);
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
+}
+.nav__brand { justify-self: start; display: inline-flex; padding: 8px 0; }
+.nav__brand img { height: 21px; width: auto; }
+.nav__mark {
+  justify-self: center; display: block; width: 28px;
+  opacity: 0; transform: translateY(8px) scale(0.85); pointer-events: none;
+  transition: opacity 0.35s var(--ease-std), transform 0.5s var(--ease-emph);
+}
+.nav.show-mark .nav__mark { opacity: 1; transform: none; pointer-events: auto; }
+.nav__cta { justify-self: end; }
+
+/* ─── the mark: splash-icon.png, cut at the gap between its strokes ───────── */
+
+.mark { position: relative; aspect-ratio: 297 / 300; }
+.mark > span, .mk { background: var(--mark-img) center / contain no-repeat; }
+.mark > span { position: absolute; inset: 0; }
+.mk { display: block; aspect-ratio: 297 / 300; }
+.mark__l { clip-path: inset(0 53.42% 0 0); }
+.mark__r { clip-path: inset(0 0 0 46.58%); }
+
+/* ─── hero ────────────────────────────────────────────────────────────────── */
+
+.hero {
+  display: grid; justify-items: center; text-align: center;
+  padding-inline: var(--gutter);
+  padding-block: clamp(40px, 8vh, 96px) clamp(36px, 5vh, 56px);
+}
+.hero .mark { width: clamp(64px, 7vw, 88px); cursor: pointer; }
+.hero__title {
+  margin-top: clamp(22px, 3vh, 32px);
+  max-width: 100%;
+  font-size: clamp(30px, 0.9rem + 3.9vw, 60px);
+  line-height: 1.12; letter-spacing: -0.04em;
+}
+.hero__line { display: block; }
+
+.rotator { display: grid; justify-items: center; }
+.phrase { grid-area: 1 / 1; visibility: hidden; }
+.phrase .w {
+  display: inline-block; opacity: 0; transform: translateY(0.42em);
+  transition: transform 0.65s var(--ease-emph), opacity 0.35s var(--ease-std);
+  transition-delay: calc(160ms + var(--k, 0) * 45ms);
+}
+.phrase.is-on, .phrase.is-leaving { visibility: visible; }
+.phrase.is-on .w { opacity: 1; transform: none; }
+.phrase.is-leaving .w {
+  opacity: 0; transform: translateY(-0.42em);
+  transition-duration: 0.32s, 0.24s; transition-delay: calc(var(--k, 0) * 28ms);
+}
+
+/* the small objects that close each phrase, drawn from the app's own marks */
+.obj { display: inline-flex; align-items: center; vertical-align: -0.04em; margin-left: 0.12em; }
+.o-chip {
+  display: inline-flex; align-items: center; gap: 0.1em;
+  height: 0.8em; padding: 0 0.17em; border-radius: 0.22em;
+  background: var(--surface-subtle);
+}
+.o-meter i { display: block; width: 0.2em; height: 0.13em; border-radius: 0.07em; background: var(--divider); }
+.o-meter i.f { background: var(--text); }
+.o-text { font-size: 0.3em; font-weight: 700; letter-spacing: 0.06em; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.o-chip .ic { font-size: 0.36em; color: var(--text); stroke-width: 2.4; }
+.o-disc { display: grid; place-items: center; width: 0.64em; height: 0.64em; border-radius: 50%; }
+.o-disc .ic { font-size: 0.36em; stroke-width: 3.2; color: var(--on-light); }
+.o-wrong { background: var(--negative); }
+.o-met { background: var(--text); }
+
+.hero__cta { margin-top: clamp(28px, 4.5vh, 40px); width: 100%; max-width: 420px; }
+.hero__more { margin-top: clamp(36px, 6vh, 64px); }
+
+/* ─── pre-registration ────────────────────────────────────────────────────── */
+
+.reg { width: 100%; text-align: center; }
+.reg__step { display: grid; gap: 12px; }
+.reg__lead { font-size: 15px; color: var(--text-muted); }
+.reg__input {
+  width: 100%; height: 54px; padding: 0 18px;
+  border: 0; border-radius: var(--radius-btn);
+  background: var(--surface-subtle); color: var(--text);
+  font: 500 16px/1.2 var(--font);
+  box-shadow: inset 0 0 0 1.5px transparent;
+  transition: box-shadow 0.2s var(--ease-std), background-color 0.2s var(--ease-std);
+}
+.reg__input::placeholder { color: var(--text-faint); opacity: 1; }
+.reg__input:hover { background: var(--surface-strong); }
+.reg__input:focus { outline: none; box-shadow: inset 0 0 0 1.5px var(--text-muted); }
+.reg__input[aria-invalid="true"] { box-shadow: inset 0 0 0 1.5px var(--negative); }
+.reg__error { font-size: 13.5px; line-height: 1.45; color: var(--negative); text-align: left; }
+.reg__error:empty { display: none; }
+.reg__submit { width: 100%; min-height: 52px; }
+.btn[disabled] { opacity: 0.7; cursor: progress; transform: none; }
+.reg__trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+
+/* After the email address: a card, as everything else in the app is. */
+.reg__card { display: grid; gap: 20px; padding: 24px 22px 22px; border-radius: var(--radius); background: var(--surface); text-align: left; }
+.reg__head { display: grid; justify-items: start; gap: 8px; }
+.reg__ok { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--text); color: var(--on-light); }
+.reg__ok .ic { font-size: 20px; stroke-width: 3; }
+.reg__title { font-size: 20px; font-weight: 700; line-height: 1.25; letter-spacing: -0.02em; }
+.reg__title:focus { outline: none; }
+.reg__sub { font-size: 14.5px; line-height: 1.55; color: var(--text-muted); }
+.reg__sub b { font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.reg__q { min-width: 0; margin: 0; padding: 0; border: 0; }
+.reg__q legend, .reg__qlabel { display: block; padding: 0; font-size: 14px; font-weight: 600; color: var(--text); }
+.reg__q .reg__input { height: 48px; margin-top: 10px; }
+.reg__picks { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.pick { position: relative; display: inline-flex; }
+.pick input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.pick span {
+  display: inline-flex; align-items: center; height: 40px; padding: 0 16px; border-radius: 12px;
+  background: var(--surface-subtle); color: var(--text-muted); font: 600 14px/1 var(--font);
+  transition: background-color 0.2s var(--ease-std), color 0.2s var(--ease-std);
+}
+.pick:hover span { background: var(--surface-strong); color: var(--text); }
+.pick input:checked + span { background: var(--text); color: var(--on-light); }
+.pick input:focus-visible + span { outline: 2px solid var(--text); outline-offset: 2px; }
+.reg__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.reg__actions .btn { min-width: 120px; }
+.textbtn { padding: 10px 6px; border: 0; background: none; color: var(--text-muted); font: 600 14px/1 var(--font); cursor: pointer; }
+.textbtn:hover { color: var(--text); }
+.reg__card--done { justify-items: center; gap: 12px; text-align: center; }
+.reg__card--done .reg__actions { justify-content: center; margin-top: 6px; }
+.reg__url { width: 100%; height: 40px; padding: 0 12px; border: 0; border-radius: 10px; background: var(--surface-subtle); color: var(--text); font: 500 13px/1 var(--font); }
+.cta__form { width: 100%; max-width: 420px; margin-top: 12px; }
+
+/* ─── bands ───────────────────────────────────────────────────────────────── */
+
+.band {
+  background: var(--bg);
+  padding-inline: var(--gutter);
+  padding-block: clamp(72px, 10vw, 132px);
+  --panel: var(--surface); --panel-2: var(--surface-subtle); --panel-3: var(--surface-strong);
+}
+.band--raised {
+  background: var(--surface);
+  --panel: var(--surface-subtle); --panel-2: var(--surface-strong); --panel-3: var(--surface-pressed);
+}
+.head { max-width: 760px; margin: 0 auto; display: grid; gap: 18px; text-align: center; }
+.h2 { font-size: clamp(30px, 1.25rem + 1.9vw, 46px); line-height: 1.1; letter-spacing: -0.035em; }
+.lead { max-width: 40em; margin-inline: auto; font-size: clamp(16px, 0.95rem + 0.25vw, 18px); line-height: 1.65; color: var(--text-muted); }
+
+/* ─── the film ────────────────────────────────────────────────────────────── */
+
+.stage {
+  position: relative; max-width: 1080px; margin: clamp(40px, 6vw, 64px) auto 0;
+  aspect-ratio: 16 / 9; overflow: hidden; border-radius: 28px; background: var(--bg);
+  transform-origin: 50% 30%; will-change: transform;
+}
+.film { display: block; width: 100%; height: 100%; object-fit: cover; background: var(--bg); cursor: pointer; }
+.film__bar {
+  position: absolute; left: 16px; bottom: 18px; display: flex; align-items: center; gap: 8px;
+  height: 40px; padding: 0 14px 0 4px; border-radius: 20px;
+  background: var(--surface-subtle); box-shadow: inset 0 0 0 1px var(--divider);
+}
+.film__btn { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text); cursor: pointer; }
+.film__btn:hover { background: var(--surface-strong); }
+.film__btn .ic { font-size: 13px; fill: currentColor; stroke: none; }
+.film__time { font: 600 12.5px/1 var(--font); font-variant-numeric: tabular-nums; color: var(--text-muted); }
+.film__sound { margin-right: -10px; }
+.film__sound .ic { font-size: 16px; fill: none; stroke: currentColor; }
+.film__full { position: absolute; right: 16px; bottom: 18px; width: 40px; height: 40px; background: var(--surface-subtle); box-shadow: inset 0 0 0 1px var(--divider); }
+.film__full .ic { font-size: 16px; fill: none; stroke: currentColor; }
+/* A 3px line along the bottom edge, inside a taller strip that takes the click. */
+.film__track { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; cursor: pointer; }
+.film__track::before, .film__track i { content: ""; position: absolute; left: 0; bottom: 0; height: 3px; }
+.film__track::before { right: 0; background: var(--divider); }
+.film__track i { width: 0; background: var(--text); }
+.stage:fullscreen { aspect-ratio: auto; border-radius: 0; transform: none !important; }
+.stage:fullscreen .film { object-fit: contain; }
+
+/* maths, typeset the way the app's MathText does: LaTeX islands in a text face */
+.mx { font-family: var(--math); font-size: 1.1em; white-space: nowrap; }
+.m { font-family: var(--math); font-style: italic; }
+.mx sup, .mx sub { font-size: 0.72em; }
+
+/* ─── feature bands ───────────────────────────────────────────────────────── */
+
+.feature__in {
+  max-width: var(--maxw); margin: 0 auto;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center; gap: clamp(36px, 7vw, 104px);
+}
+.feature--flip .vis { order: 2; }
+.copy { display: grid; gap: 18px; max-width: 470px; }
+.feature--flip .copy { justify-self: end; }
+.h3 { font-size: clamp(26px, 1.1rem + 1.45vw, 38px); line-height: 1.14; letter-spacing: -0.032em; }
+.copy p { font-size: clamp(16px, 0.95rem + 0.2vw, 17.5px); line-height: 1.68; color: var(--text-muted); }
+
+/* Each illustration is a 48-unit square; 1em is one unit, so it scales as one piece. */
+.vis { position: relative; width: 100%; max-width: 520px; aspect-ratio: 1; justify-self: center; container-type: inline-size; }
+.art { position: absolute; inset: 0; font-size: 10px; font-size: calc(100cqw / 48); line-height: 1.35; text-align: left; color: var(--text); }
+.p {
+  --p-bg: var(--panel); --p-in: var(--panel-2);
+  position: absolute; padding: 2.1em; border-radius: 1.8em;
+  background: var(--p-bg);
+  box-shadow: 0 2.6em 5em -2em var(--shadow);
+  transition: transform 0.95s var(--ease-emph);
+  transition-delay: calc(var(--i, 0) * 70ms);
+}
+.p--front { --p-bg: var(--panel-2); --p-in: var(--panel-3); }
+.vis.is-pending .p { transform: translateY(3.4em); transition: none; }
+.p__row { display: flex; align-items: center; justify-content: space-between; gap: 1em; }
+.p__title { font-size: 1.6em; font-weight: 700; letter-spacing: -0.02em; line-height: 1.25; }
+.p__sub { font-size: 1.25em; line-height: 1.45; color: var(--text-muted); }
+.p__faint { font-size: 1.2em; line-height: 1.4; color: var(--text-faint); }
+.lbl { font-size: 1.05em; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-faint); }
+.tag { display: inline-flex; align-items: center; gap: 0.4em; height: 2.2em; padding: 0 0.9em; border-radius: 0.8em; background: var(--p-in); font-size: 1.1em; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.tag .ic { font-size: 1.15em; stroke-width: 2.4; }
+.rule { height: 1px; margin: 1.7em 0; background: var(--divider); }
+.big { display: flex; align-items: baseline; gap: 0.35em; }
+.big b { font-size: 4.2em; font-weight: 700; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.big span { font-size: 1.3em; color: var(--text-faint); }
+.mtr { display: grid; grid-template-columns: repeat(10, 1fr); gap: 0.4em; }
+.mtr i { position: relative; height: 1em; overflow: hidden; border-radius: 0.5em; background: var(--divider); }
+.mtr i::after { content: ""; position: absolute; inset: 0; width: var(--f, 0%); border-radius: inherit; background: var(--text); }
+.mtr i.f { --f: 100%; }
+.mbtn {
+  display: flex; align-items: center; justify-content: center; gap: 0.5em;
+  height: 4.4em; padding: 0 1.6em; border-radius: 1.3em;
+  background: var(--p-in); border: 0.15em solid transparent;
+  font-size: 1em; font-weight: 700; white-space: nowrap;
+}
+.mbtn > span { font-size: 1.4em; letter-spacing: -0.01em; }
+.mbtn--ramp { background: linear-gradient(var(--bg), var(--bg)) padding-box, var(--ramp) border-box; }
+.mbtn .ic { font-size: 1.5em; stroke-width: 2.4; }
+.cols { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: end; }
+.cols > i { width: 1px; height: 3.6em; background: var(--divider); margin: 0 1em; }
+.col__v { display: flex; align-items: baseline; gap: 0.3em; margin-top: 0.8em; white-space: nowrap; }
+.col__v b { font-size: 2em; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1; }
+.col__v span { font-size: 1.05em; color: var(--text-faint); }
+.av { display: grid; place-items: center; width: 3.6em; height: 3.6em; flex: none; border-radius: 50%; background: var(--p-in); }
+.av span { font-size: 1.2em; font-weight: 700; color: var(--text-muted); }
+
+/* tests */
+.list { list-style: none; margin: 1.2em 0 0; padding: 0; }
+.list li { display: flex; align-items: center; justify-content: space-between; gap: 1em; padding: 1.15em 0; border-top: 1px solid var(--divider); }
+.list li:first-child { border-top: 0; }
+.list__t { font-size: 1.3em; font-weight: 600; letter-spacing: -0.01em; }
+.list__m { font-size: 1.15em; color: var(--text-faint); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.subj { display: grid; grid-template-columns: 7.4em 1fr 6.6em; align-items: center; gap: 1.2em; margin-top: 1.1em; }
+.subj__n { font-size: 1.25em; color: var(--text-muted); }
+.bar { height: 0.8em; border-radius: 0.4em; background: var(--divider); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: inherit; background: var(--text); }
+.subj__v { display: inline-flex; align-items: center; justify-content: flex-end; gap: 0.3em; font-size: 1.15em; font-weight: 600; }
+.subj__v .ic { font-size: 1.1em; stroke-width: 2.6; }
+.subj__v--dim { color: var(--text-faint); }
+.marks { display: flex; gap: 1.8em; margin-top: 0.9em; }
+.marks b { display: block; font-size: 2.2em; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+.marks span { display: block; margin-top: 0.45em; font-size: 1.1em; color: var(--text-faint); }
+
+/* alarm */
+.alarm__app { display: flex; align-items: center; gap: 0.6em; }
+.alarm__app .mk { width: 1.9em; }
+.alarm__app span { font-size: 1.2em; color: var(--text-faint); }
+.alarm__app b { font-size: 1.2em; font-weight: 600; }
+.alarm__time { display: flex; align-items: baseline; gap: 0.4em; margin-top: 1.3em; }
+.alarm__time b { font-size: 7em; font-weight: 600; letter-spacing: -0.05em; line-height: 1; font-variant-numeric: tabular-nums; }
+.alarm__time span { font-size: 1.6em; font-weight: 600; color: var(--text-muted); }
+.alarm__title { margin-top: 1em; font-size: 1.7em; font-weight: 700; letter-spacing: -0.02em; }
+.alarm__acts { display: grid; gap: 1em; margin-top: 2em; }
+.alarm__row { display: grid; grid-template-columns: 1fr 1fr; gap: 1em; }
+.tgl { position: relative; width: 4.6em; height: 2.8em; flex: none; border-radius: 1.4em; background: var(--text); }
+.tgl::after { content: ""; position: absolute; top: 0.3em; right: 0.3em; width: 2.2em; height: 2.2em; border-radius: 50%; background: var(--on-light); }
+
+/* mistakes */
+.chips { display: flex; flex-wrap: wrap; gap: 0.7em; margin-top: 1.4em; }
+.chipx { display: inline-flex; align-items: center; gap: 0.55em; height: 3.4em; padding: 0 1.1em; border-radius: 1.2em; background: var(--p-in); color: var(--text-muted); }
+.chipx .ic { font-size: 1.45em; }
+.chipx span { font-size: 1.2em; font-weight: 600; white-space: nowrap; }
+.chipx.on { background: var(--text); color: var(--on-light); }
+.chipx em { font-style: normal; font-size: 1.1em; font-weight: 700; opacity: 0.6; }
+.pips { display: flex; align-items: center; gap: 0.7em; margin-top: 1.3em; }
+.pips span { font-size: 1.1em; color: var(--text-faint); white-space: nowrap; }
+.pips i { width: 1.4em; height: 1.4em; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 0.25em var(--mark-future); }
+.pips i.done { background: var(--text); box-shadow: none; }
+.pips i.due { box-shadow: inset 0 0 0 0.25em var(--text); }
+.pips b { flex: 1; height: 1px; min-width: 0.8em; background: var(--divider); }
+
+/* readiness: Home's cards */
+.score__cap { margin-top: 0.7em; font-size: 1.3em; line-height: 1.45; color: var(--text-muted); }
+.score__meta { display: flex; align-items: center; gap: 0.6em; margin-top: 1.4em; color: var(--text-faint); }
+.score__meta span { font-size: 1.2em; }
+.score__meta .ic { font-size: 1.2em; }
+.score__meta i.v { width: 1px; height: 1.2em; background: var(--divider); margin: 0 0.4em; }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5em; margin-top: 1.4em; }
+.dbox { border-radius: 1.2em; padding: 0.15em; }
+.dbox.today { background: var(--ramp-diag); }
+.dbox__in { display: grid; justify-items: center; gap: 0.7em; padding: 0.9em 0 0.8em; border-radius: 1.05em; background: var(--p-in); }
+.dbox.future .dbox__in { background: transparent; }
+.dbox.today .dbox__in { background: var(--surface-strong); }
+.dbox__lb { font-size: 1.1em; font-weight: 600; color: var(--text-muted); }
+.dbox.future .dbox__lb { font-weight: 400; color: var(--text-faint); }
+.dbox.today .dbox__lb { color: var(--text); }
+.gl { display: grid; place-items: center; width: 2.6em; height: 2.6em; border-radius: 50%; }
+.gl-met { background: var(--text); color: var(--on-light); }
+.gl-met .ic { font-size: 1.6em; stroke-width: 3; }
+.gl-missed { font-size: 1.9em; font-weight: 700; line-height: 1; color: var(--mark-missed); width: auto; height: 1.37em; }
+.gl-future { box-shadow: inset 0 0 0 0.3em var(--mark-future); }
+.gl-arc svg { width: 100%; height: 100%; overflow: visible; }
+.gl-arc .track { fill: none; stroke: var(--divider); stroke-width: 3.5; }
+.gl-arc .arc { fill: none; stroke: var(--mark-today); stroke-width: 3.5; stroke-linecap: round; stroke-dasharray: 100; transform: rotate(-90deg); transform-origin: 13px 13px; }
+.goal { display: flex; align-items: center; gap: 1.2em; color: var(--text-faint); }
+.goal span { font-size: 1.25em; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.goal span small { font-size: 1em; font-weight: 400; color: var(--text-faint); }
+.goal .ic { font-size: 1.4em; }
+.stats { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; padding: 1.8em 0; }
+.stats > i { width: 1px; align-self: stretch; margin: 0.2em 0; background: var(--divider); }
+.stat { padding: 0 1.6em; }
+.stat .lbl { font-size: 1.05em; }
+.stat__v { display: flex; align-items: baseline; gap: 0.35em; margin-top: 0.85em; }
+.stat__v b { font-size: 2.6em; font-weight: 700; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat__v span { font-size: 1.2em; color: var(--text-muted); }
+
+/* community */
+.sol__who { display: flex; align-items: center; gap: 1em; margin-top: 1.6em; }
+.sol__name { font-size: 1.3em; font-weight: 600; }
+.sol__ok { display: inline-flex; align-items: center; gap: 0.35em; margin-top: 0.25em; color: var(--text-faint); }
+.sol__ok span { font-size: 1.1em; }
+.sol__ok .ic { font-size: 1.15em; stroke-width: 2.6; color: var(--text); }
+.sol__body { margin-top: 1.3em; font-size: 1.3em; line-height: 1.62; color: var(--text-muted); }
+.sol__body .mx { color: var(--text); }
+.votes { display: flex; align-items: center; gap: 0.8em; margin-top: 1.6em; }
+.vote { display: inline-flex; align-items: center; gap: 0.5em; height: 3em; padding: 0 1em; border-radius: 1em; background: var(--p-in); }
+.vote .ic { font-size: 1.4em; }
+.vote span { font-size: 1.2em; font-weight: 700; font-variant-numeric: tabular-nums; }
+.vote.on { background: var(--text); color: var(--on-light); }
+
+/* a row led by an icon tile: the alarm setting, a shared question */
+.del { display: flex; align-items: center; gap: 1.1em; }
+.del__ic { display: grid; place-items: center; width: 3.6em; height: 3.6em; flex: none; border-radius: 1.1em; background: var(--p-in); color: var(--text-muted); }
+.del__ic .ic { font-size: 1.6em; }
+
+/* ─── learn more ──────────────────────────────────────────────────────────── */
+
+.learn { max-width: var(--maxw); margin: 0 auto; display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: clamp(32px, 6vw, 96px); align-items: start; }
+.learn__intro { display: grid; gap: 16px; }
+.learn__intro .lead { margin: 0; }
+.faq { border-top: 1px solid var(--divider); }
+.faq:last-child { border-bottom: 1px solid var(--divider); }
+.faq summary {
+  display: grid; grid-template-columns: 40px minmax(0, 1fr) 20px; align-items: start; gap: 16px;
+  padding: 22px 0; cursor: pointer; list-style: none;
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary:focus-visible { outline-offset: 4px; border-radius: 10px; }
+.faq__ic { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--surface-subtle); color: var(--text); }
+.faq__ic .ic { font-size: 18px; }
+.faq__t { display: block; font-size: 17px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.35; }
+.faq__d { display: block; margin-top: 4px; font-size: 14.5px; line-height: 1.55; color: var(--text-muted); }
+.faq__chev { margin-top: 10px; font-size: 20px; color: var(--text-faint); transition: transform 0.3s var(--ease-std); }
+.faq[open] .faq__chev { transform: rotate(180deg); color: var(--text); }
+.faq::details-content { height: 0; overflow: clip; transition: height 0.35s var(--ease-std), content-visibility 0.35s allow-discrete; }
+.faq[open]::details-content { height: auto; }
+.faq__body { padding: 0 36px 24px 56px; font-size: 15.5px; line-height: 1.7; color: var(--text-muted); }
+
+/* ─── closing call + footer ───────────────────────────────────────────────── */
+
+.cta { display: grid; justify-items: center; gap: 16px; text-align: center; padding-block: clamp(56px, 7vw, 104px) clamp(96px, 12vw, 160px); }
+.foot { border-top: 1px solid var(--divider); padding-inline: var(--gutter); }
+.foot__in {
+  max-width: 1280px; margin: 0 auto; padding-block: 28px;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px 28px;
+  font-size: 13px; color: var(--text-faint);
+}
+.foot__links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 24px; }
+.foot__links a { text-decoration: none; }
+.foot__links a:hover { color: var(--text); }
+.foot__links span { user-select: all; }
+.foot__tag { justify-self: end; display: inline-flex; align-items: center; gap: 10px; color: var(--text-muted); }
+.foot__tag .mark { width: 18px; }
+
+/* ─── narrow ──────────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .feature__in { grid-template-columns: minmax(0, 1fr); }
+  .feature--flip .vis { order: 0; }
+  .copy, .feature--flip .copy { justify-self: center; max-width: 560px; }
+  .learn { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .stage { aspect-ratio: 4 / 5; border-radius: 22px; }
+}
+@media (max-width: 720px) {
+  .foot__in { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; }
+  .foot__tag { justify-self: center; }
+}
+@media (max-width: 560px) {
+  .nav__mark { display: none; }
+  .nav__in { grid-template-columns: 1fr auto; }
+  .faq__body { padding: 0 0 22px 56px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition-duration: 0.01ms !important; transition-delay: 0s !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol>
+  <symbol id="i-sound-off" viewBox="0 0 24 24"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></symbol>
+  <symbol id="i-sound-on" viewBox="0 0 24 24"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.4 18.4a9 9 0 0 0 0-12.8"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-chev-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-timer" viewBox="0 0 24 24"><path d="M10 2h4"/><path d="M12 14l3-3"/><circle cx="12" cy="14" r="8"/></symbol>
+  <symbol id="i-alarm" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.4-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></symbol>
+  <symbol id="i-percent" viewBox="0 0 24 24"><path d="M19 5 5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></symbol>
+  <symbol id="i-trend" viewBox="0 0 24 24"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></symbol>
+  <symbol id="i-calc" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8"/><path d="M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h.01M12 19h.01M16 19h.01"/></symbol>
+  <symbol id="i-sigma" viewBox="0 0 24 24"><path d="M18 7V4H6l6 8-6 8h12v-3"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M9 18v-6H5l7-7 7 7h-4v6z"/></symbol>
+  <symbol id="i-tablet" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M12 18h.01"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/></symbol>
+</svg>
+
+<header class="nav" id="nav">
+  <div class="nav__in">
+    <a class="nav__brand" href="#top" aria-label="HudJee, back to top"><img src="/wordmark.png" alt="HudJee" width="94" height="21"></a>
+    <a class="nav__mark mark" href="#top" tabindex="-1" aria-hidden="true">
+      <span class="mark__l"></span><span class="mark__r"></span>
+    </a>
+    <a class="btn btn--ramp btn--sm nav__cta" href="#register">Register interest</a>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ═══ hero ═══ -->
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="mark" id="hero-mark" aria-hidden="true">
+      <span class="mark__l"></span><span class="mark__r"></span>
+    </div>
+
+    <h1 class="hero__title" id="hero-title">
+      <span class="sr-only">HudJee, practice that adapts to every answer</span>
+      <span class="hero__line" aria-hidden="true">HudJee, practice that</span>
+      <span class="hero__line rotator" id="rotator" aria-hidden="true">
+        <span class="phrase is-on"><span class="w" style="--k:0">adapts</span> <span class="w" style="--k:1">to</span> <span class="w" style="--k:2">every</span> <span class="w" style="--k:3">answer</span></span>
+        <span class="phrase"><span class="w" style="--k:0">finds</span> <span class="w" style="--k:1">your</span> <span class="w" style="--k:2">weak</span> <span class="w" style="--k:3">chapters</span><span class="w obj" style="--k:4"><span class="o-chip o-meter"><i class="f"></i><i class="f"></i><i></i><i></i><i></i></span></span></span>
+        <span class="phrase"><span class="w" style="--k:0">predicts</span> <span class="w" style="--k:1">your</span> <span class="w" style="--k:2">rank</span><span class="w obj" style="--k:3"><span class="o-chip"><span class="o-text">AIR</span><svg class="ic"><use href="#i-trend"/></svg></span></span></span>
+        <span class="phrase"><span class="w" style="--k:0">remembers</span> <span class="w" style="--k:1">every</span> <span class="w" style="--k:2">mistake</span><span class="w obj" style="--k:3"><span class="o-disc o-wrong"><svg class="ic"><use href="#i-x"/></svg></span></span></span>
+        <span class="phrase"><span class="w" style="--k:0">rings</span> <span class="w" style="--k:1">when</span> <span class="w" style="--k:2">it’s</span> <span class="w" style="--k:3">time</span><span class="w obj" style="--k:4"><span class="o-chip"><svg class="ic"><use href="#i-alarm"/></svg><span class="o-text">6:30</span></span></span></span>
+        <span class="phrase"><span class="w" style="--k:0">keeps</span> <span class="w" style="--k:1">your</span> <span class="w" style="--k:2">streak</span> <span class="w" style="--k:3">alive</span><span class="w obj" style="--k:4"><span class="o-disc o-met"><svg class="ic"><use href="#i-check"/></svg></span></span></span>
+      </span>
+    </h1>
+
+    <div class="hero__cta">
+      <form class="reg" id="reg-hero" data-source="hero" data-step="email" novalidate>
+        <div class="reg__step" data-step="email">
+          <p class="reg__lead">Launching soon on Android and iPhone</p>
+          <label class="sr-only" for="rh-email">Email address</label>
+          <input class="reg__input" id="rh-email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="Your email address" aria-describedby="rh-note rh-error">
+          <div class="reg__trap" aria-hidden="true"><label for="rh-trap">Leave this empty</label><input id="rh-trap" name="hj_trap" type="text" tabindex="-1" autocomplete="off"></div>
+          <p class="reg__error" id="rh-error" aria-live="polite"></p>
+          <p class="fine" id="rh-note">We’ll only use it to tell you when HudJee opens.</p>
+          <button class="btn btn--ramp reg__submit" type="submit"><span>Register interest</span><svg class="ic"><use href="#i-arrow-right"/></svg></button>
+          <noscript><p class="fine">Turn on JavaScript to register.</p></noscript>
+        </div>
+
+        <div class="reg__card" data-step="details" hidden>
+          <div class="reg__head">
+            <span class="reg__ok"><svg class="ic"><use href="#i-check"/></svg></span>
+            <p class="reg__title" tabindex="-1">You’re on the list</p>
+            <p class="reg__sub">Three quick answers help us plan launch day. All optional.</p>
+          </div>
+          <fieldset class="reg__q">
+            <legend>When do you sit JEE?</legend>
+            <div class="reg__picks">
+              <label class="pick"><input type="radio" name="exam_year" value="2027"><span>2027</span></label>
+              <label class="pick"><input type="radio" name="exam_year" value="2028"><span>2028</span></label>
+              <label class="pick"><input type="radio" name="exam_year" value="2029"><span>2029</span></label>
+            </div>
+          </fieldset>
+          <fieldset class="reg__q">
+            <legend>Which phone do you use?</legend>
+            <div class="reg__picks">
+              <label class="pick"><input type="radio" name="platform" value="android"><span>Android</span></label>
+              <label class="pick"><input type="radio" name="platform" value="ios"><span>iPhone</span></label>
+            </div>
+          </fieldset>
+          <div class="reg__q">
+            <label class="reg__qlabel" for="rh-name">Your name</label>
+            <input class="reg__input" id="rh-name" name="name" type="text" autocomplete="name" maxlength="80">
+          </div>
+          <p class="reg__error" aria-live="polite"></p>
+          <div class="reg__actions">
+            <button class="btn btn--ramp reg__save" type="submit"><span>Save</span></button>
+            <button class="textbtn reg__skip" type="button">Skip</button>
+          </div>
+        </div>
+
+        <div class="reg__card reg__card--done" data-step="done" hidden>
+          <span class="reg__ok"><svg class="ic"><use href="#i-check"/></svg></span>
+          <p class="reg__title" tabindex="-1">You’re on the list</p>
+          <p class="reg__sub">We’ll write to <b class="reg__who"></b> the day HudJee opens.</p>
+          <p class="fine reg__preview" hidden>This is a preview copy of the page, so nothing was saved.</p>
+          <input class="reg__url" type="text" readonly hidden aria-label="Link to share">
+          <div class="reg__actions">
+            <button class="ghost reg__share" type="button"><svg class="ic"><use href="#i-share"/></svg><span>Share with a friend</span></button>
+            <button class="textbtn reg__again" type="button">Register someone else</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <a class="ghost hero__more" href="#film">See how it works <svg class="ic"><use href="#i-arrow-down"/></svg></a>
+  </section>
+
+  <!-- ═══ the film ═══ -->
+  <section class="band band--raised" id="film" aria-labelledby="film-title">
+    <header class="head">
+      <h2 class="h2" id="film-title">Built around your whole syllabus</h2>
+      <p class="lead">Give HudJee thirty minutes a day and it handles the rest, from choosing the chapter and pitching every question at your level to bringing back the ones you got wrong.</p>
+    </header>
+
+    <div class="stage" id="stage">
+      <video class="film" id="film-video" muted playsinline loop preload="none" poster="film/poster-16x9.jpg"
+        aria-label="A 42-second film of HudJee at work, with sound effects: the practice alarm, a question answered right and a harder one answered wrong, the mistake notebook, the daily goal and readiness score, and a mock test result.">
+        <source src="film/hudjee-film-4x5.mp4" type="video/mp4" media="(max-width: 640px)">
+        <source src="film/hudjee-film-16x9.mp4" type="video/mp4">
+      </video>
+      <div class="film__bar">
+        <button class="film__btn" id="film-play" type="button" aria-label="Play the film"><svg class="ic"><use href="#i-play"/></svg></button>
+        <span class="film__time"><span id="film-now">0:00</span> / 0:42</span>
+        <button class="film__btn film__sound" id="film-sound" type="button" aria-pressed="false" aria-label="Turn sound on"><svg class="ic"><use href="#i-sound-off"/></svg></button>
+      </div>
+      <button class="film__btn film__full" id="film-full" type="button" aria-label="Watch full screen"><svg class="ic"><use href="#i-expand"/></svg></button>
+      <div class="film__track" id="film-track" aria-hidden="true"><i id="film-prog"></i></div>
+    </div>
+  </section>
+
+  <!-- ═══ 1 · tests ═══ -->
+  <section class="band feature" aria-labelledby="f1">
+    <div class="feature__in">
+      <div class="vis" role="img" aria-label="The list of papers (adaptive mock, JEE Main mock, Physics sectional, Advanced-style paper), JEE Main marking of +4, −1 and 0, and an adaptive mock result projecting a JEE Main score of 96 to 112 out of 300.">
+        <div class="art" aria-hidden="true">
+          <div class="p" style="left:1.5em; top:1.5em; width:26em; --i:0">
+            <p class="p__title">Tests</p>
+            <ul class="list">
+              <li><span class="list__t">Adaptive mock</span><span class="list__m">72 min · 48 Qs</span></li>
+              <li><span class="list__t">JEE Main mock</span><span class="list__m">3 h · 75 Qs</span></li>
+              <li><span class="list__t">Physics sectional</span><span class="list__m">1 h · 25 Qs</span></li>
+              <li><span class="list__t">Advanced-style</span><span class="list__m">3 h · 51 Qs</span></li>
+            </ul>
+          </div>
+          <div class="p" style="right:1.5em; top:3.5em; width:18em; padding:1.7em; --i:1">
+            <p class="lbl">JEE Main marking</p>
+            <div class="marks"><div><b>+4</b><span>right</span></div><div><b>−1</b><span>wrong</span></div><div><b>0</b><span>blank</span></div></div>
+          </div>
+          <div class="p p--front" style="right:1.5em; top:16.5em; width:29em; --i:2">
+            <div class="p__row"><span class="p__title">Adaptive mock</span><span class="tag">Result</span></div>
+            <p class="lbl" style="margin-top:2.2em">Projected JEE Main score</p>
+            <div class="big" style="margin-top:0.7em"><b>96–112</b><span>/300</span></div>
+            <p class="p__sub" style="margin-top:0.5em">About the 97th percentile</p>
+            <div class="rule"></div>
+            <div class="p__row"><span class="lbl">Section 1</span><span class="lbl">Section 2</span></div>
+            <div class="subj"><span class="subj__n">Physics</span><span class="bar"><i style="width:74%"></i></span><span class="subj__v"><svg class="ic"><use href="#i-arrow-up"/></svg>Harder</span></div>
+            <div class="subj"><span class="subj__n">Chemistry</span><span class="bar"><i style="width:63%"></i></span><span class="subj__v"><svg class="ic"><use href="#i-arrow-up"/></svg>Harder</span></div>
+            <div class="subj"><span class="subj__n">Maths</span><span class="bar"><i style="width:38%"></i></span><span class="subj__v subj__v--dim"><svg class="ic"><use href="#i-arrow-down"/></svg>Easier</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="copy">
+        <h3 class="h3" id="f1">Mock tests marked the way JEE is marked</h3>
+        <p>Sit the full JEE Main paper, 75 questions in three hours at +4 and −1, or one subject in an hour. The adaptive mock takes 72 minutes, makes each subject’s second section harder or easier based on the first, and projects your score onto the JEE Main scale with the percentile it would have drawn.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 2 · alarm ═══ -->
+  <section class="band band--raised feature feature--flip" aria-labelledby="f2">
+    <div class="feature__in">
+      <div class="vis" role="img" aria-label="The practice alarm ringing at 6:30 AM with Start practising, Snooze 10 min and Dismiss buttons, and the setting that turns it on for every day.">
+        <div class="art" aria-hidden="true">
+          <div class="p" style="left:2.5em; top:1.5em; width:33em; padding:2.4em; border-radius:2.6em; --i:0">
+            <div class="alarm__app"><span class="mk"></span><b>HudJee</b><i class="sep"></i><span>now</span></div>
+            <div class="alarm__time"><b>6:30</b><span>AM</span></div>
+            <p class="alarm__title">Time for today’s practice</p>
+            <p class="p__sub" style="margin-top:0.4em">Start now, snooze for 10 minutes, or dismiss it for today.</p>
+            <div class="alarm__acts">
+              <span class="mbtn mbtn--ramp"><span>Start practising</span></span>
+              <div class="alarm__row"><span class="mbtn"><span>Snooze 10 min</span></span><span class="mbtn"><span>Dismiss</span></span></div>
+            </div>
+          </div>
+          <div class="p p--front" style="right:1.5em; top:34.6em; width:26em; padding:1.7em; --i:1">
+            <div class="del">
+              <span class="del__ic"><svg class="ic"><use href="#i-alarm"/></svg></span>
+              <div style="flex:1; min-width:0"><p class="p__title" style="font-size:1.45em">Practice alarm</p><p class="p__faint" style="margin-top:0.2em">Every day at 6:30 AM</p></div>
+              <span class="tgl"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="copy">
+        <h3 class="h3" id="f2">An alarm for practice, not one more notification</h3>
+        <p>Pick any minute and your phone rings at it, with Snooze 10 min, Start practising and Dismiss right on the alarm. Practise before it goes off and that day’s alarm stays quiet.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 3 · mistakes ═══ -->
+  <section class="band feature" aria-labelledby="f3">
+    <div class="feature__in">
+      <div class="vis" role="img" aria-label="After a wrong answer: 38 percent of 2,140 attempts got the question right, a list of reasons for the miss with Silly mistake selected, and a mistake revision set of 15 questions due again after 1, 3 and 7 days.">
+        <div class="art" aria-hidden="true">
+          <div class="p" style="left:1.5em; top:1.5em; width:29em; --i:0">
+            <p class="p__sub">Got it right</p>
+            <div class="big" style="margin-top:0.5em"><b>38%</b><span>of 2,140 attempts</span></div>
+            <div class="mtr" style="margin-top:1.3em"><i class="f"></i><i class="f"></i><i class="f"></i><i style="--f:80%"></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="rule"></div>
+            <div class="cols">
+              <div><p class="lbl">You</p><div class="col__v"><b>1:12</b><span>/ 0:54</span></div></div><i></i>
+              <div><p class="lbl">Average</p><div class="col__v"><b>1:31</b></div></div><i></i>
+              <div><p class="lbl">Skipped</p><div class="col__v"><b>12%</b></div></div>
+            </div>
+          </div>
+          <div class="p p--front" style="right:1.5em; top:20.6em; width:35em; --i:1">
+            <p class="p__title">Why did you miss it?</p>
+            <div class="chips">
+              <span class="chipx"><svg class="ic"><use href="#i-timer"/></svg><span>Time pressure</span></span>
+              <span class="chipx on"><svg class="ic"><use href="#i-zap"/></svg><span>Silly mistake</span><em>31%</em></span>
+              <span class="chipx"><svg class="ic"><use href="#i-calc"/></svg><span>Calculation error</span></span>
+              <span class="chipx"><svg class="ic"><use href="#i-sigma"/></svg><span>Forgot the formula</span></span>
+            </div>
+          </div>
+          <div class="p" style="left:3em; top:38em; width:22em; padding:1.8em; --i:2">
+            <div class="p__row"><span class="p__title" style="font-size:1.45em">Mistake revision</span><span class="tag">15 Qs</span></div>
+            <div class="pips"><i class="done"></i><span>1 day</span><b></b><i class="due"></i><span>3 days</span><b></b><i></i><span>7 days</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="copy">
+        <h3 class="h3" id="f3">Every mistake comes back before the exam does</h3>
+        <p>After a wrong answer, see how other students did on the same question and tell HudJee why you missed it. The question goes into your mistake notebook and returns in revision after a day, three days and a week, until you get it right.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 4 · readiness ═══ -->
+  <section class="band band--raised feature feature--flip" aria-labelledby="f4">
+    <div class="feature__in">
+      <div class="vis" role="img" aria-label="Home screen cards: a readiness score of 64 out of 100 with 71 percent accuracy, the week’s daily goal strip with today 14 of 20 questions done, and today’s streak, questions solved and time.">
+        <div class="art" aria-hidden="true">
+          <div class="p" style="left:1.5em; top:1.5em; width:30em; padding:2.2em; --i:0">
+            <p class="p__title" style="font-size:2.1em; letter-spacing:-0.025em">Readiness score</p>
+            <p class="score__cap">On track — a little more each day</p>
+            <div class="big" style="margin-top:1.6em"><b>64</b><span>/100</span></div>
+            <div class="mtr" style="margin-top:1.2em"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i style="--f:40%"></i><i></i><i></i><i></i></div>
+            <div class="score__meta"><svg class="ic"><use href="#i-percent"/></svg><span>71% accuracy</span><i class="v"></i><svg class="ic" style="color:var(--text-muted)"><use href="#i-trend"/></svg><span style="color:var(--text-muted)">5 this week</span></div>
+            <span class="mbtn mbtn--ramp" style="margin-top:2.2em; justify-self:start; width:max-content"><span>Resume practice</span><svg class="ic"><use href="#i-arrow-right"/></svg></span>
+          </div>
+          <div class="p p--front" style="right:1.5em; top:25.5em; width:31.5em; padding:1.5em; --i:1">
+            <div class="p__row"><span class="p__title">Daily goal</span><span class="goal"><span>14<small>/20 Qs</small></span><span>22<small>/30 min</small></span><svg class="ic"><use href="#i-chev-right"/></svg></span></div>
+            <div class="week">
+              <div class="dbox"><div class="dbox__in"><span class="gl gl-met"><svg class="ic"><use href="#i-check"/></svg></span><span class="dbox__lb">M</span></div></div>
+              <div class="dbox"><div class="dbox__in"><span class="gl gl-met"><svg class="ic"><use href="#i-check"/></svg></span><span class="dbox__lb">T</span></div></div>
+              <div class="dbox"><div class="dbox__in"><span class="gl"><span class="gl-missed">!</span></span><span class="dbox__lb">W</span></div></div>
+              <div class="dbox"><div class="dbox__in"><span class="gl gl-met"><svg class="ic"><use href="#i-check"/></svg></span><span class="dbox__lb">T</span></div></div>
+              <div class="dbox today"><div class="dbox__in"><span class="gl gl-arc"><svg viewBox="0 0 26 26"><circle class="track" cx="13" cy="13" r="11.25"/><circle class="arc" cx="13" cy="13" r="11.25" pathLength="100" style="stroke-dashoffset:30"/></svg></span><span class="dbox__lb">F</span></div></div>
+              <div class="dbox future"><div class="dbox__in"><span class="gl gl-future"></span><span class="dbox__lb">S</span></div></div>
+              <div class="dbox future"><div class="dbox__in"><span class="gl gl-future"></span><span class="dbox__lb">S</span></div></div>
+            </div>
+          </div>
+          <div class="p" style="left:4.5em; top:39.5em; width:30em; padding:0; --i:2">
+            <div class="stats">
+              <div class="stat"><p class="lbl">Streak</p><div class="stat__v"><b>23</b><span>days</span></div></div><i></i>
+              <div class="stat"><p class="lbl">Solved</p><div class="stat__v"><b>14</b><span>Qs</span></div></div><i></i>
+              <div class="stat"><p class="lbl">Time</p><div class="stat__v"><b>22</b><span>min</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="copy">
+        <h3 class="h3" id="f4">Know where you stand every morning</h3>
+        <p>Your readiness score turns every answer into one number out of 100, next to your accuracy and how far it moved this week. The daily goal keeps the habit small enough to keep: 20 questions and 30 minutes.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 5 · community ═══ -->
+  <section class="band feature" aria-labelledby="f5">
+    <div class="feature__in">
+      <div class="vis" role="img" aria-label="A verified community solution to a rolling-sphere question with 128 upvotes, a friend’s challenge to accept, and a question a friend shared.">
+        <div class="art" aria-hidden="true">
+          <div class="p" style="left:1.5em; top:2.5em; width:32em; --i:0">
+            <div class="p__row"><span class="p__title">Community solutions</span><span class="tag">3 verified</span></div>
+            <div class="sol__who">
+              <span class="av"><span>MK</span></span>
+              <div><p class="sol__name">Meera K.</p><p class="sol__ok"><svg class="ic"><use href="#i-check"/></svg><span>Checked by students who got it right</span></p></div>
+            </div>
+            <p class="sol__body">Energy is conserved, so <span class="mx"><i class="m">mgh</i> = ½<i class="m">mv</i><sup>2</sup> + ½<i class="m">Iω</i><sup>2</sup></span>. With <span class="mx"><i class="m">I</i> = ⅖<i class="m">mr</i><sup>2</sup></span> and <span class="mx"><i class="m">v</i> = <i class="m">ωr</i></span>, that gives <span class="mx"><i class="m">v</i><sup>2</sup> = 10<i class="m">gh</i>/7</span>.</p>
+            <div class="votes"><span class="vote on"><svg class="ic"><use href="#i-up"/></svg><span>128</span></span><span class="vote"><svg class="ic" style="transform:rotate(180deg)"><use href="#i-up"/></svg></span></div>
+          </div>
+          <div class="p p--front" style="right:1.5em; top:25em; width:27em; --i:1">
+            <div class="sol__who" style="margin-top:0">
+              <span class="av"><span>KS</span></span>
+              <div><p class="sol__name">Kabir challenged you</p><p class="p__faint" style="margin-top:0.2em">Electrostatics · 1 question</p></div>
+            </div>
+            <div class="alarm__row" style="margin-top:1.8em"><span class="mbtn mbtn--ramp"><span>Accept</span></span><span class="mbtn"><span>Decline</span></span></div>
+          </div>
+          <div class="p" style="left:1.5em; top:37.5em; width:26em; padding:1.7em; --i:2">
+            <div class="del">
+              <span class="del__ic"><svg class="ic"><use href="#i-share"/></svg></span>
+              <div><p class="p__title" style="font-size:1.4em">Aditi sent you a question</p><p class="p__faint" style="margin-top:0.2em">Thermodynamics</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="copy">
+        <h3 class="h3" id="f5">Solve it your way, then see how others did</h3>
+        <p>Write up your own method under any question. Students who got it right check each solution before it’s shown, and the clearest ones rise to the top. Share a question with a friend, or challenge them head to head.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ learn more ═══ -->
+  <section class="band band--raised" aria-labelledby="learn-title">
+    <div class="learn">
+      <div class="learn__intro">
+        <h2 class="h2" id="learn-title">Learn more about HudJee</h2>
+        <p class="lead">The choices behind the app, and how it decides what you practise next.</p>
+      </div>
+      <div>
+        <details class="faq">
+          <summary><span class="faq__ic"><svg class="ic"><use href="#i-target"/></svg></span><span><span class="faq__t">How HudJee picks your next question</span><span class="faq__d">Item response theory, without the maths.</span></span><svg class="ic faq__chev"><use href="#i-chev-down"/></svg></summary>
+          <div class="faq__body"><p>Every question in the bank carries a difficulty, and a measure of how sharply it separates students who know the idea from students who don’t. Both are fitted from real students’ answers. After each answer, HudJee updates its estimate of your level and serves the question that tells it the most, which is usually one right at the edge of what you can do.</p></div>
+        </details>
+        <details class="faq">
+          <summary><span class="faq__ic"><svg class="ic"><use href="#i-book"/></svg></span><span><span class="faq__t">Where the questions come from</span><span class="faq__d">JEE Main papers, worked solutions and a review queue.</span></span><svg class="ic faq__chev"><use href="#i-chev-down"/></svg></summary>
+          <div class="faq__body"><p>The bank is built on JEE Main previous-year papers, each with a worked solution, alongside questions written and reviewed in HudJee’s own content studio. If three students report a problem with a question, it comes out of practice automatically until it’s fixed.</p></div>
+        </details>
+        <details class="faq">
+          <summary><span class="faq__ic"><svg class="ic"><use href="#i-tablet"/></svg></span><span><span class="faq__t">Phones and tablets</span><span class="faq__d">Android and iPhone, and laid out properly on an iPad.</span></span><svg class="ic faq__chev"><use href="#i-chev-down"/></svg></summary>
+          <div class="faq__body"><p>HudJee lays itself out for the screen it’s on. Phones get the tab bar, tablets get a rail down the side, and a wide screen gets a full sidebar. In a practice session on a tablet, the question sits on top and the answers get their own pane along the bottom. Turn an iPad sideways and the app turns with it.</p></div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ closing call ═══ -->
+  <section class="band cta" id="register" aria-labelledby="register-title">
+    <h2 class="h2" id="register-title">Ready to rank higher?</h2>
+    <p class="lead">Coming soon to Android and iPhone.</p>
+    <div class="cta__form">
+      <form class="reg" id="reg-closing" data-source="closing" data-step="email" novalidate>
+        <div class="reg__step" data-step="email">
+          <label class="sr-only" for="rc-email">Email address</label>
+          <input class="reg__input" id="rc-email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="Your email address" aria-describedby="rc-note rc-error">
+          <div class="reg__trap" aria-hidden="true"><label for="rc-trap">Leave this empty</label><input id="rc-trap" name="hj_trap" type="text" tabindex="-1" autocomplete="off"></div>
+          <p class="reg__error" id="rc-error" aria-live="polite"></p>
+          <p class="fine" id="rc-note">We’ll only use it to tell you when HudJee opens.</p>
+          <button class="btn btn--ramp reg__submit" type="submit"><span>Register interest</span><svg class="ic"><use href="#i-arrow-right"/></svg></button>
+          <noscript><p class="fine">Turn on JavaScript to register.</p></noscript>
+        </div>
+
+        <div class="reg__card" data-step="details" hidden>
+          <div class="reg__head">
+            <span class="reg__ok"><svg class="ic"><use href="#i-check"/></svg></span>
+            <p class="reg__title" tabindex="-1">You’re on the list</p>
+            <p class="reg__sub">Three quick answers help us plan launch day. All optional.</p>
+          </div>
+          <fieldset class="reg__q">
+            <legend>When do you sit JEE?</legend>
+            <div class="reg__picks">
+              <label class="pick"><input type="radio" name="exam_year" value="2027"><span>2027</span></label>
+              <label class="pick"><input type="radio" name="exam_year" value="2028"><span>2028</span></label>
+              <label class="pick"><input type="radio" name="exam_year" value="2029"><span>2029</span></label>
+            </div>
+          </fieldset>
+          <fieldset class="reg__q">
+            <legend>Which phone do you use?</legend>
+            <div class="reg__picks">
+              <label class="pick"><input type="radio" name="platform" value="android"><span>Android</span></label>
+              <label class="pick"><input type="radio" name="platform" value="ios"><span>iPhone</span></label>
+            </div>
+          </fieldset>
+          <div class="reg__q">
+            <label class="reg__qlabel" for="rc-name">Your name</label>
+            <input class="reg__input" id="rc-name" name="name" type="text" autocomplete="name" maxlength="80">
+          </div>
+          <p class="reg__error" aria-live="polite"></p>
+          <div class="reg__actions">
+            <button class="btn btn--ramp reg__save" type="submit"><span>Save</span></button>
+            <button class="textbtn reg__skip" type="button">Skip</button>
+          </div>
+        </div>
+
+        <div class="reg__card reg__card--done" data-step="done" hidden>
+          <span class="reg__ok"><svg class="ic"><use href="#i-check"/></svg></span>
+          <p class="reg__title" tabindex="-1">You’re on the list</p>
+          <p class="reg__sub">We’ll write to <b class="reg__who"></b> the day HudJee opens.</p>
+          <p class="fine reg__preview" hidden>This is a preview copy of the page, so nothing was saved.</p>
+          <input class="reg__url" type="text" readonly hidden aria-label="Link to share">
+          <div class="reg__actions">
+            <button class="ghost reg__share" type="button"><svg class="ic"><use href="#i-share"/></svg><span>Share with a friend</span></button>
+            <button class="textbtn reg__again" type="button">Register someone else</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="foot__in">
+    <span>© 2026 HudJee</span>
+    <nav class="foot__links" aria-label="Legal and support">
+      <a href="https://hudjee.com/privacy">Privacy</a>
+      <a href="https://hudjee.com/terms">Terms</a>
+      <span>support@hudjee.com</span>
+    </nav>
+    <span class="foot__tag"><span class="mark" aria-hidden="true"><span class="mark__l"></span><span class="mark__r"></span></span>Practice daily. Rank higher.</span>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const hasIO = 'IntersectionObserver' in window;
+
+  /* ── nav: a hairline once the page moves, the mark once the hero's has gone ── */
+  const nav = $('#nav');
+  const heroMark = $('#hero-mark');
+  const onScroll = () => nav.classList.toggle('is-scrolled', window.scrollY > 4);
+  onScroll();
+  window.addEventListener('scroll', onScroll, { passive: true });
+  if (hasIO) {
+    new IntersectionObserver(([e]) => nav.classList.toggle('show-mark', !e.isIntersecting), {
+      rootMargin: '-64px 0px 0px 0px',
+    }).observe(heroMark);
+  }
+
+  /* ── the mark unlocks and clicks shut, as BootSplash does on every cold start ── */
+  // Distances are BootSplash's own: 8pt apart along the gap's normal, 5pt along
+  // the gap, for a mark the splash draws 119.5pt tall.
+  function unlock(el) {
+    if (reduce.matches || !el.animate || el.dataset.busy) return;
+    el.dataset.busy = '1';
+    const L = $('.mark__l', el), R = $('.mark__r', el);
+    const k = (el.offsetHeight * (409 / 429)) / 119.5;
+    const dx = -5.02 * k, dy = 7.99 * k;
+    const T = 1100, at = (ms) => ms / T;
+    const tr = (x, y, f) => `translate(${(x * f).toFixed(2)}px, ${(y * f).toFixed(2)}px)`;
+    const stroke = (x, y) => [
+      { offset: 0, transform: tr(x, y, 0) },
+      { offset: at(340), transform: tr(x, y, 0), easing: 'cubic-bezier(0.33, 1, 0.68, 1)' },
+      { offset: at(720), transform: tr(x, y, 1), easing: 'cubic-bezier(0.32, 0, 0.67, 0)' },
+      { offset: at(850), transform: tr(x, y, -0.12), easing: 'ease-in-out' },
+      { offset: at(970), transform: tr(x, y, 0.04), easing: 'ease-in-out' },
+      { offset: 1, transform: tr(x, y, 0) },
+    ];
+    L.animate(stroke(dx, dy), { duration: T });
+    R.animate(stroke(-dx, -dy), { duration: T });
+    const pulse = el.animate([
+      { offset: 0, transform: 'scale(1)' },
+      { offset: at(180), transform: 'scale(1)', easing: 'cubic-bezier(0.45, 0, 0.55, 1)' },
+      { offset: at(340), transform: 'scale(0.95)', easing: 'cubic-bezier(0.33, 1, 0.68, 1)' },
+      { offset: at(720), transform: 'scale(1)', easing: 'cubic-bezier(0.5, 1, 0.89, 1)' },
+      { offset: at(810), transform: 'scale(1.025)', easing: 'ease-in-out' },
+      { offset: at(940), transform: 'scale(0.996)', easing: 'ease-in-out' },
+      { offset: 1, transform: 'scale(1)' },
+    ], { duration: T });
+    pulse.onfinish = () => { delete el.dataset.busy; };
+  }
+  unlock(heroMark);
+  $$('.mark').forEach((m) => {
+    m.addEventListener('pointerenter', () => unlock(m));
+    m.addEventListener('click', () => unlock(m));
+  });
+
+  /* ── the headline: one phrase at a time ── */
+  const phrases = $$('#rotator .phrase');
+  let pi = 0, rotTimer = null;
+  function nextPhrase() {
+    const cur = phrases[pi];
+    pi = (pi + 1) % phrases.length;
+    const nxt = phrases[pi];
+    cur.classList.remove('is-on');
+    cur.classList.add('is-leaving');
+    setTimeout(() => cur.classList.remove('is-leaving'), 650);
+    nxt.classList.add('is-on');
+  }
+  let rotReady = false;
+  const startRot = () => {
+    if (rotReady && heroVisible && !reduce.matches && !rotTimer && !document.hidden) rotTimer = setInterval(nextPhrase, 2900);
+  };
+  const stopRot = () => { clearInterval(rotTimer); rotTimer = null; };
+  let heroVisible = true;
+  if (hasIO) {
+    new IntersectionObserver(([e]) => { heroVisible = e.isIntersecting; heroVisible ? startRot() : stopRot(); })
+      .observe($('#rotator'));
+  }
+  // The first phrase holds through the mark's intro before the rotation begins.
+  setTimeout(() => {
+    rotReady = true;
+    if (heroVisible && !reduce.matches && !document.hidden) { nextPhrase(); startRot(); }
+  }, 3400);
+
+  document.addEventListener('visibilitychange', () => {
+    document.hidden ? stopRot() : startRot();
+    filmSync();
+  });
+
+  /* ── the film: plays while it is on screen, unless motion is reduced ── */
+  const stage = $('#stage');
+  const film = $('#film-video');
+  const filmPlay = $('#film-play');
+  const filmNow = $('#film-now');
+  const filmProg = $('#film-prog');
+  if (window.matchMedia('(max-width: 640px)').matches) film.poster = 'film/poster-4x5.jpg';
+  let filmWanted = !reduce.matches;   // until the viewer presses play or pause themselves
+  let filmInView = !hasIO;
+  const minutes = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  function filmSync() {
+    if (filmWanted && filmInView && !document.hidden) {
+      const p = film.play();
+      if (p && p.catch) p.catch(() => { filmWanted = false; });
+    } else if (!film.paused) {
+      film.pause();
+    }
+  }
+  function filmState() {
+    const playing = !film.paused;
+    $('use', filmPlay).setAttribute('href', playing ? '#i-pause' : '#i-play');
+    filmPlay.setAttribute('aria-label', playing ? 'Pause the film' : 'Play the film');
+  }
+  let filmRaf = 0;
+  function filmTick() {
+    if (film.duration) filmProg.style.width = `${(film.currentTime / film.duration) * 100}%`;
+    filmRaf = film.paused ? 0 : requestAnimationFrame(filmTick);
+  }
+  film.addEventListener('play', () => { filmState(); if (!filmRaf) filmRaf = requestAnimationFrame(filmTick); });
+  film.addEventListener('pause', filmState);
+  film.addEventListener('seeked', filmTick);
+  film.addEventListener('timeupdate', () => { filmNow.textContent = minutes(film.currentTime); });
+  const filmToggle = () => {
+    filmWanted = film.paused;
+    if (filmWanted) { filmInView = true; filmSync(); } else film.pause();
+  };
+  filmPlay.addEventListener('click', filmToggle);
+  // It autoplays muted, as browsers require; the sound effects are a press away.
+  const filmSound = $('#film-sound');
+  function soundState() {
+    const on = !film.muted;
+    $('use', filmSound).setAttribute('href', on ? '#i-sound-on' : '#i-sound-off');
+    filmSound.setAttribute('aria-pressed', String(on));
+    filmSound.setAttribute('aria-label', on ? 'Turn sound off' : 'Turn sound on');
+  }
+  filmSound.addEventListener('click', () => {
+    film.muted = !film.muted;
+    if (!film.muted && film.paused) { filmWanted = true; filmInView = true; filmSync(); }
+    soundState();
+  });
+  film.addEventListener('volumechange', soundState);
+  film.addEventListener('click', filmToggle);
+  $('#film-track').addEventListener('click', (e) => {
+    if (!film.duration) return;   // nothing is loaded until it first plays
+    const r = e.currentTarget.getBoundingClientRect();
+    film.currentTime = ((e.clientX - r.left) / r.width) * film.duration;
+  });
+  $('#film-full').addEventListener('click', () => {
+    const enter = stage.requestFullscreen || stage.webkitRequestFullscreen;
+    const fallback = () => { if (film.webkitEnterFullscreen) film.webkitEnterFullscreen(); };
+    if (!enter) { fallback(); return; }
+    try {
+      const p = enter.call(stage);
+      if (p && p.catch) p.catch(fallback);
+    } catch (e) {
+      fallback();
+    }
+  });
+  if (hasIO) new IntersectionObserver(([e]) => { filmInView = e.isIntersecting; filmSync(); }, { threshold: 0.4 }).observe(stage);
+  else filmSync();
+
+  // The film settles to full size as it rises into view.
+  if (!reduce.matches) {
+    let raf = 0;
+    const settle = () => {
+      raf = 0;
+      if (document.fullscreenElement) return;
+      const r = stage.getBoundingClientRect();
+      const vh = window.innerHeight || 800;
+      const t = Math.max(0, Math.min(1, (vh - r.top) / (vh * 0.75)));
+      stage.style.transform = `scale(${(0.94 + 0.06 * t).toFixed(4)})`;
+    };
+    settle();
+    window.addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(settle); }, { passive: true });
+    window.addEventListener('resize', settle);
+  }
+
+  /* ── pre-registration: an email address, then three optional questions ── */
+  // The build writes the Supabase project in here. Without it (a local preview,
+  // or this page published as an artifact) the form still runs, and says that
+  // nothing was saved.
+  const CONFIG = /*__CONFIG__*/null;
+  const SITE = '%SITE_URL%';
+  const PREVIEW = !(CONFIG && CONFIG.supabaseUrl && CONFIG.supabaseKey);
+  const STORE = 'hudjee:pre-registered';
+  const MSG = {
+    empty: 'Enter your email address.',
+    invalid: 'That email address doesn’t look right. Check it for typos.',
+    failed: 'Couldn’t register you just now. Check your connection and try again.',
+    unsaved: 'Couldn’t save that. Try again, or skip it.',
+  };
+  const regForms = $$('form.reg');
+
+  // The same rule register_interest() applies.
+  function readEmail(raw) {
+    const email = raw.trim().toLowerCase();
+    return email.length <= 254 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email : null;
+  }
+
+  // Campaign tags from the link that brought the visitor, and where they came from.
+  function campaign() {
+    const tags = {};
+    try {
+      const q = new URLSearchParams(location.search);
+      ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'].forEach((k) => {
+        const v = q.get(k);
+        if (v) tags[k] = v.slice(0, 100);
+      });
+      if (document.referrer) {
+        const host = new URL(document.referrer).hostname;
+        if (host && host !== location.hostname) tags.referrer = host;
+      }
+    } catch (e) { /* no tags, then */ }
+    return Object.keys(tags).length ? tags : null;
+  }
+
+  async function registerInterest(args) {
+    if (PREVIEW) {
+      await new Promise((r) => setTimeout(r, 450));
+      return { ok: true };
+    }
+    const headers = { 'Content-Type': 'application/json', apikey: CONFIG.supabaseKey };
+    // A legacy anon key is a JWT and goes in Authorization as well; a publishable key never does.
+    if (!CONFIG.supabaseKey.startsWith('sb_')) headers.Authorization = `Bearer ${CONFIG.supabaseKey}`;
+    const ctl = new AbortController();
+    const giveUp = setTimeout(() => ctl.abort(), 12000);
+    try {
+      const res = await fetch(`${CONFIG.supabaseUrl}/rest/v1/rpc/register_interest`, {
+        method: 'POST', headers, body: JSON.stringify(args), signal: ctl.signal,
+      });
+      if (!res.ok) throw new Error(`register_interest answered ${res.status}`);
+      return await res.json();
+    } finally {
+      clearTimeout(giveUp);
+    }
+  }
+
+  // Who registered from this browser, so a return visit opens on "You're on the list".
+  let mine = null;
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE) || 'null');
+    if (saved && typeof saved.email === 'string') mine = saved;
+  } catch (e) { mine = null; }
+  function remember(v) {
+    mine = v;
+    try { v ? localStorage.setItem(STORE, JSON.stringify(v)) : localStorage.removeItem(STORE); } catch (e) { /* this visit only */ }
+  }
+
+  function showStep(form, name, focus) {
+    form.dataset.step = name;
+    $$('[data-step]', form).forEach((part) => { part.hidden = part.dataset.step !== name; });
+    if (name === 'done') {
+      $('.reg__who', form).textContent = mine ? mine.email : 'your inbox';
+      $('.reg__preview', form).hidden = !PREVIEW;
+      $('.reg__url', form).hidden = true;
+    }
+    if (focus) {
+      const target = name === 'email' ? $('input[name="email"]', form) : $(`[data-step="${name}"] .reg__title`, form);
+      if (target) target.focus();
+    }
+  }
+
+  function busy(btn, on, text) {
+    const label = btn.querySelector('span') || btn;
+    if (on) { btn.dataset.idle = label.textContent; label.textContent = text; }
+    else if (btn.dataset.idle) label.textContent = btn.dataset.idle;
+    btn.disabled = on;
+  }
+
+  async function share(btn) {
+    const label = btn.querySelector('span');
+    const idle = label.textContent;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'HudJee', text: 'JEE practice that adapts to every answer. Pre-register for launch:', url: SITE });
+        return;
+      } catch (e) {
+        if (e && e.name === 'AbortError') return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(SITE);
+      label.textContent = 'Link copied';
+      setTimeout(() => { label.textContent = idle; }, 2400);
+    } catch (e) {
+      const field = $('.reg__url', btn.closest('form'));
+      field.value = SITE;
+      field.hidden = false;
+      field.select();
+    }
+  }
+
+  regForms.forEach((form) => {
+    const emailInput = $('input[name="email"]', form);
+    const trap = $('input[name="hj_trap"]', form);
+    const [emailError, detailsError] = $$('.reg__error', form);
+    const submit = $('.reg__submit', form);
+    const save = $('.reg__save', form);
+
+    emailInput.addEventListener('input', () => {
+      emailInput.removeAttribute('aria-invalid');
+      emailError.textContent = '';
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (form.dataset.step === 'email') {
+        if (submit.disabled) return;
+        const email = readEmail(emailInput.value);
+        if (!email) {
+          emailInput.setAttribute('aria-invalid', 'true');
+          emailError.textContent = emailInput.value.trim() ? MSG.invalid : MSG.empty;
+          emailInput.focus();
+          return;
+        }
+        busy(submit, true, 'Registering…');
+        try {
+          const res = await registerInterest({
+            p_email: email, p_source: form.dataset.source, p_utm: campaign(), p_trap: trap.value || null,
+          });
+          if (!res || res.ok !== true) {
+            if (res && res.error === 'invalid_email') emailInput.setAttribute('aria-invalid', 'true');
+            emailError.textContent = res && res.error === 'invalid_email' ? MSG.invalid : MSG.failed;
+            return;
+          }
+          remember({ email });
+          regForms.forEach((f) => (f === form ? showStep(f, 'details', true) : showStep(f, 'done')));
+        } catch (err) {
+          emailError.textContent = MSG.failed;
+        } finally {
+          busy(submit, false);
+        }
+      } else if (form.dataset.step === 'details') {
+        if (save.disabled) return;
+        const year = $('input[name="exam_year"]:checked', form);
+        const phone = $('input[name="platform"]:checked', form);
+        const name = $('input[name="name"]', form).value.trim();
+        if (!mine || (!year && !phone && !name)) { showStep(form, 'done', true); return; }
+        detailsError.textContent = '';
+        busy(save, true, 'Saving…');
+        try {
+          const res = await registerInterest({
+            p_email: mine.email,
+            p_name: name || null,
+            p_exam_year: year ? Number(year.value) : null,
+            p_platform: phone ? phone.value : null,
+            p_source: form.dataset.source,
+          });
+          if (!res || res.ok !== true) throw new Error('not saved');
+          showStep(form, 'done', true);
+        } catch (err) {
+          detailsError.textContent = MSG.unsaved;
+        } finally {
+          busy(save, false);
+        }
+      }
+    });
+
+    $('.reg__skip', form).addEventListener('click', () => showStep(form, 'done', true));
+    $('.reg__again', form).addEventListener('click', () => {
+      remember(null);
+      regForms.forEach((f) => { f.reset(); showStep(f, 'email'); });
+      emailInput.focus();
+    });
+    $('.reg__share', form).addEventListener('click', (e) => share(e.currentTarget));
+  });
+
+  if (mine) regForms.forEach((f) => showStep(f, 'done'));
+
+  // The bar's button goes to the form you can see, or to the one at the end.
+  $('.nav__cta').addEventListener('click', (e) => {
+    const hero = $('#reg-hero');
+    const r = hero.getBoundingClientRect();
+    if (hero.dataset.step === 'email' && r.top >= 64 && r.bottom <= window.innerHeight) {
+      e.preventDefault();
+      $('input[name="email"]', hero).focus();
+    }
+  });
+
+  /* ── feature illustrations: the panels drift into place as the band arrives ── */
+  if (hasIO && !reduce.matches) {
+    const vis = $$('.vis');
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.remove('is-pending'); io.unobserve(e.target); }
+    }), { rootMargin: '0px 0px -15% 0px' });
+    vis.forEach((v) => {
+      if (v.getBoundingClientRect().top > window.innerHeight) v.classList.add('is-pending');
+      io.observe(v);
+    });
+  }
+})();
+</script>
+</body>
+</html>

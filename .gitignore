@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+.DS_Store
+
+# Supabase Edge Function secrets and CLI local state. Never commit these.
+supabase/.env.secrets
+supabase/.temp/
