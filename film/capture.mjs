@@ -4,8 +4,8 @@
 //   node capture.mjs --w=1920 --h=1080 --out=<dir>       every frame as JPEG, and a poster beside <dir>
 //   node capture.mjs --w=1920 --h=1080 --times=2,13.6    a few PNG stills
 //
-// Montserrat is read from node_modules and written into the page, so a render
-// never waits on the network for it. Output defaults to a folder in the temp dir.
+// Montserrat comes from film/fonts (OFL, see OFL.txt) and is written into the
+// page, so a render never waits on the network for it. Output defaults to a folder in the temp dir.
 
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -30,7 +30,7 @@ const OUT = resolve(arg('out', join(tmpdir(), 'hudjee-film', `${TIMES ? 'stills'
 const fonts = { M400: '400Regular', M500: '500Medium', M600: '600SemiBold', M700: '700Bold' };
 let html = readFileSync(here('./film.html'), 'utf8');
 for (const [key, weight] of Object.entries(fonts)) {
-  const ttf = readFileSync(here(`../../../node_modules/@expo-google-fonts/montserrat/${weight}/Montserrat_${weight}.ttf`));
+  const ttf = readFileSync(here(`./fonts/Montserrat_${weight}.ttf`));
   html = html.replace(`{{${key}}}`, `data:font/ttf;base64,${ttf.toString('base64')}`);
 }
 writeFileSync(here('./.render.html'), html);

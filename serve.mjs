@@ -1,6 +1,6 @@
 // Serves dist/ on http://localhost:4321 (or $PORT) for local work. No caching,
 // so a rebuild shows on the next reload. Production hosting is static; see
-// docs/deploy-web.md.
+// README.md.
 
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';

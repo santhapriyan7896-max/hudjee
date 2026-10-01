@@ -1,10 +1,10 @@
 // Renders the landing page's film, both cuts with sound, into public/film/.
 //
-//   node apps/web/film/render.mjs [--out=<dir>]
+//   npm run film            (or: node film/render.mjs [--out=<dir>])
 //
 // macOS only: frames come from Google Chrome, the sound from Python with numpy
-// and scipy (services/engine/.venv has both; set PYTHON to use another), and the
-// MP4s from AVFoundation through Swift. Scratch files go to the temp dir.
+// and scipy (`pip install numpy scipy`; set PYTHON to use a particular one), and
+// the MP4s from AVFoundation through Swift. Scratch files go to the temp dir.
 
 import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync } from 'node:fs';
@@ -16,7 +16,7 @@ const here = (path) => fileURLToPath(new URL(path, import.meta.url));
 const hit = process.argv.find((a) => a.startsWith('--out='));
 const OUT = resolve(hit ? hit.slice(6) : here('../public/film/'));
 const WORK = join(tmpdir(), 'hudjee-film');
-const PYTHON = process.env.PYTHON || here('../../../services/engine/.venv/bin/python');
+const PYTHON = process.env.PYTHON || 'python3';
 const CUTS = [
   { name: '16x9', w: 1920, h: 1080, bitrate: 2_200_000 },
   { name: '4x5', w: 1080, h: 1350, bitrate: 1_900_000 },
