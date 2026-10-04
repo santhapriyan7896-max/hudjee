@@ -18,6 +18,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@HudJeeofficial">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=STIX+Two+Text:ital@0;1&display=swap">
@@ -317,9 +318,46 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
 .reg__actions .btn { min-width: 120px; }
 .textbtn { padding: 10px 6px; border: 0; background: none; color: var(--text-muted); font: 600 14px/1 var(--font); cursor: pointer; }
 .textbtn:hover { color: var(--text); }
-.reg__card--done { gap: 14px; }
-.reg__card--done .reg__actions { margin-top: 6px; }
-.reg__url { width: 100%; height: 40px; padding: 0 12px; border: 0; border-radius: 10px; background: var(--surface-subtle); color: var(--text); font: 500 13px/1 var(--font); }
+.reg__card--done { gap: 18px; justify-items: start; }
+.reg__done { display: flex; align-items: center; gap: 14px; }
+.reg__done .reg__ok { flex: none; margin: 0; }
+.reg__done .reg__sub { margin-top: 2px; }
+.reg__card--done .textbtn { margin-left: -6px; }
+
+/* After registering, the ask: bring the people you study with. A row nested in
+   the card, as Home's goal card sits in its stack, and WhatsApp as the one
+   primary action, since that is where a batch talks. */
+.share {
+  display: grid; justify-items: start; gap: 8px; width: 100%;
+  padding: 22px; border-radius: var(--radius); background: var(--surface-subtle);
+}
+.share__ic { display: grid; place-items: center; width: 38px; height: 38px; margin-bottom: 6px; border-radius: 50%; background: var(--surface-strong); color: var(--text); }
+.share__ic .ic { font-size: 18px; }
+.share__title { font-size: 18px; font-weight: 700; line-height: 1.3; letter-spacing: -0.02em; }
+.share__text { max-width: 34em; font-size: 14.5px; line-height: 1.6; color: var(--text-muted); }
+.share__acts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; margin-top: 12px; }
+.share__acts:has([data-share="more"][hidden]) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.share__wa { grid-column: 1 / -1; min-height: 52px; font-size: 16px; }
+.share__wa .ic { font-size: 18px; stroke-width: 2; }
+.sbtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 46px; padding: 0 12px; border: 0; border-radius: var(--radius-btn);
+  background: var(--surface-strong); color: var(--text);
+  font: 600 14px/1 var(--font); text-decoration: none; white-space: nowrap;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.2s var(--ease-std), transform 0.18s var(--ease-std);
+}
+.sbtn:hover { background: var(--surface-pressed); }
+.sbtn:active { transform: scale(0.97); }
+.sbtn .ic { font-size: 16px; }
+.sbtn.is-done { background: var(--text); color: var(--on-light); }
+.reg__url { width: 100%; height: 40px; margin-top: 4px; padding: 0 12px; border: 0; border-radius: 10px; background: var(--surface-strong); color: var(--text); font: 500 13px/1 var(--font); }
+/* a phone: the three smaller ways stand as tiles, glyph over label */
+@container (max-width: 439px) {
+  .share { padding: 18px; }
+  .sbtn { flex-direction: column; gap: 6px; min-height: 64px; padding: 0 6px; font-size: 12.5px; }
+  .sbtn .ic { font-size: 18px; }
+}
 
 /* ─── bands ───────────────────────────────────────────────────────────────── */
 
@@ -575,7 +613,9 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); align-items: end;
   column-gap: clamp(40px, 6vw, 112px); row-gap: 36px;
 }
-.ft__brand { display: grid; justify-items: start; gap: 18px; }
+/* The headline holds the top whatever the form is showing; the email field sits
+   level with its last line, and the taller steps after it grow downward. */
+.ft__brand { align-self: start; display: grid; justify-items: start; gap: 18px; }
 .ft__join { container-type: inline-size; }
 
 .ft__title { font-size: clamp(36px, 1rem + 3.2vw, 64px); line-height: 1.04; letter-spacing: -0.045em; }
@@ -584,7 +624,41 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
 
 /* the app's small-caps label: what a block is, never louder than what's in it */
 .ft__lbl { margin-bottom: 14px; font-size: 11.5px; font-weight: 700; line-height: 1.2; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); }
-.ft__fine { max-width: 1360px; margin: clamp(40px, 5vw, 72px) auto 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; font-size: 13px; color: var(--text-faint); }
+/* the base line: where to follow along, and the small print */
+.ft__base {
+  max-width: 1360px; margin: clamp(40px, 5vw, 72px) auto 0;
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 28px 40px;
+}
+.ft__social { display: flex; gap: 10px; }
+.ft__badges { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-right: auto; }
+/* the app's header disc: one step off the card, with the ring it keeps on purpose */
+.soc {
+  display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
+  background: var(--surface-subtle); box-shadow: inset 0 0 0 1px var(--divider); color: var(--text-muted);
+  transition: color 0.2s var(--ease-std), background-color 0.2s var(--ease-std), transform 0.18s var(--ease-std);
+}
+.soc:hover { color: var(--text); background: var(--surface-strong); }
+.soc:active { transform: scale(0.96); }
+.soc .ic { font-size: 18px; }
+.ft__ph { display: block; border-radius: 10px; transition: transform 0.18s var(--ease-std), opacity 0.2s var(--ease-std); }
+.ft__ph:hover { opacity: 0.85; }
+.ft__ph:active { transform: scale(0.97); }
+.ft__ph img { width: auto; height: 44px; }
+/* Supabase and Vercel, drawn to sit beside the Product Hunt badge: its height,
+   its two lines, and the brand marks in white on the card's own step */
+.tbadge {
+  display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 16px 0 13px; border-radius: 8px;
+  background: var(--surface-subtle); box-shadow: inset 0 0 0 1px var(--divider); color: var(--text); text-decoration: none;
+  transition: background-color 0.2s var(--ease-std), transform 0.18s var(--ease-std);
+}
+.tbadge:hover { background: var(--surface-strong); }
+.tbadge:active { transform: scale(0.97); }
+.tbadge__logo { width: 20px; height: 20px; flex: none; fill: currentColor; }
+.tbadge__logo--vercel { width: 18px; height: 16px; }
+.tbadge__txt { display: grid; gap: 3px; line-height: 1; }
+.tbadge__txt small { font-size: 8.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.tbadge__txt b { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
+.ft__fine { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; font-size: 13px; color: var(--text-faint); }
 .ft__fine nav { display: flex; gap: 6px 20px; }
 .ft__fine a { text-decoration: none; }
 .ft__fine a:hover { color: var(--text); }
@@ -767,6 +841,13 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
   <symbol id="i-redo" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
   <symbol id="i-up" viewBox="0 0 24 24"><path d="M9 18v-6H5l7-7 7 7h-4v6z"/></symbol>
   <symbol id="i-share" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+  <symbol id="i-whatsapp" viewBox="0 0 24 24"><path d="m3 21 1.65-3.8a9 9 0 1 1 3.4 2.9L3 21"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/></symbol>
+  <symbol id="i-telegram" viewBox="0 0 24 24"><path d="m15 10-4 4 6 6 4-16-18 7 4 2 2 6 3-4"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M4 4l11.733 16H20L8.267 4z"/><path d="m4 20 6.768-6.768m2.46-2.46L20 4"/></symbol>
+  <symbol id="i-youtube" viewBox="0 0 24 24"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17"/><path d="m10 15 5-3-5-3z"/></symbol>
+  <symbol id="i-instagram" viewBox="0 0 24 24"><rect width="20" height="20" x="2" y="2" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><path d="M17.5 6.5h.01"/></symbol>
 </svg>
 
 <header class="nav" id="nav">
@@ -1103,27 +1184,64 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
           </div>
 
           <div class="reg__card reg__card--done" data-step="done" hidden>
-            <span class="reg__ok"><svg class="ic"><use href="#i-check"/></svg></span>
-            <p class="reg__title" tabindex="-1">You’re on the list</p>
-            <p class="reg__sub">We’ll write to <b class="reg__who"></b> the day HudJee opens.</p>
-            <p class="fine reg__preview" hidden>This is a preview copy of the page, so nothing was saved.</p>
-            <input class="reg__url" type="text" readonly hidden aria-label="Link to share">
-            <div class="reg__actions">
-              <button class="ghost reg__share" type="button"><svg class="ic"><use href="#i-share"/></svg><span>Share with a friend</span></button>
-              <button class="textbtn reg__again" type="button">Register someone else</button>
+            <div class="reg__done">
+              <span class="reg__ok"><svg class="ic"><use href="#i-check"/></svg></span>
+              <div>
+                <p class="reg__title" tabindex="-1">You’re on the list</p>
+                <p class="reg__sub">We’ll write to <b class="reg__who"></b> the day HudJee opens.</p>
+              </div>
             </div>
+            <p class="fine reg__preview" hidden>This is a preview copy of the page, so nothing was saved.</p>
+
+            <div class="share" role="group" aria-labelledby="share-title">
+              <span class="share__ic" aria-hidden="true"><svg class="ic"><use href="#i-users"/></svg></span>
+              <p class="share__title" id="share-title">Bring your study group</p>
+              <p class="share__text">Every share helps HudJee reach more students preparing for JEE. Send it to the friends you study with, and when it opens you can challenge each other head to head.</p>
+              <div class="share__acts">
+                <a class="btn btn--ramp share__wa" data-share="whatsapp" target="_blank" rel="noopener"><svg class="ic"><use href="#i-whatsapp"/></svg><span>Share on WhatsApp</span></a>
+                <a class="sbtn" data-share="telegram" target="_blank" rel="noopener"><svg class="ic"><use href="#i-telegram"/></svg><span>Telegram</span></a>
+                <button class="sbtn" type="button" data-share="copy"><svg class="ic"><use href="#i-link"/></svg><span>Copy link</span></button>
+                <button class="sbtn" type="button" data-share="more" hidden><svg class="ic"><use href="#i-share"/></svg><span>More</span></button>
+              </div>
+              <input class="reg__url" type="text" readonly hidden aria-label="Link to share">
+            </div>
+
+            <button class="textbtn reg__again" type="button">Register someone else</button>
           </div>
         </form>
       </div>
     </div>
 
-    <div class="ft__fine">
-      <span>© 2026 HudJee</span>
-      <nav aria-label="Legal">
-        <a href="/privacy">Privacy</a>
-        <a href="/cookies">Cookies</a>
-        <a href="/terms">Terms</a>
-      </nav>
+    <div class="ft__base">
+      <div class="ft__follow">
+        <p class="ft__lbl" id="ft-follow">Follow us</p>
+        <nav class="ft__social" aria-labelledby="ft-follow">
+          <a class="soc" href="https://x.com/HudJeeofficial" target="_blank" rel="noopener" aria-label="HudJee on X"><svg class="ic"><use href="#i-x"/></svg></a>
+          <a class="soc" href="https://www.youtube.com/@hudjeeofficial" target="_blank" rel="noopener" aria-label="HudJee on YouTube"><svg class="ic"><use href="#i-youtube"/></svg></a>
+          <a class="soc" href="https://www.instagram.com/hudjeeofficial" target="_blank" rel="noopener" aria-label="HudJee on Instagram"><svg class="ic"><use href="#i-instagram"/></svg></a>
+        </nav>
+      </div>
+
+      <div class="ft__badges">
+        <a class="ft__ph" href="https://www.producthunt.com/products/hudjee?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-hudjee" target="_blank" rel="noopener noreferrer"><img alt="HudJee - Adaptive JEE practice that learns what you don't know | Product Hunt" width="250" height="54" loading="lazy" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1269604&amp;theme=dark&amp;t=1791135481884"></a>
+        <a class="tbadge" href="https://supabase.com" target="_blank" rel="noopener" aria-label="Made with Supabase">
+          <svg class="tbadge__logo" viewBox="0 0 109 113" aria-hidden="true"><path d="M63.708 110.284c-2.86 3.601-8.658 1.628-8.727-2.97l-1.007-67.251h45.22c8.19 0 12.758 9.46 7.665 15.874l-43.151 54.347Z"/><path d="M45.317 2.071c2.86-3.601 8.657-1.628 8.726 2.97l.442 67.251H9.831c-8.19 0-12.759-9.46-7.665-15.875L45.317 2.071Z" opacity=".6"/></svg>
+          <span class="tbadge__txt"><small>Made with</small><b>Supabase</b></span>
+        </a>
+        <a class="tbadge" href="https://vercel.com" target="_blank" rel="noopener" aria-label="Deployed on Vercel">
+          <svg class="tbadge__logo tbadge__logo--vercel" viewBox="0 0 76 65" aria-hidden="true"><path d="M37.527 0 75.055 65H0L37.527 0Z"/></svg>
+          <span class="tbadge__txt"><small>Deployed on</small><b>Vercel</b></span>
+        </a>
+      </div>
+
+      <div class="ft__fine">
+        <span>© 2026 HudJee</span>
+        <nav aria-label="Legal">
+          <a href="/privacy">Privacy</a>
+          <a href="/cookies">Cookies</a>
+          <a href="/terms">Terms</a>
+        </nav>
+      </div>
     </div>
 
     <div class="ft__word" id="ft-word" aria-hidden="true">
@@ -1559,27 +1677,50 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
     btn.disabled = on;
   }
 
-  async function share(btn) {
-    const label = btn.querySelector('span');
-    const idle = label.textContent;
-    if (navigator.share) {
+  // Sharing, once you're on the list. Each link names its channel in the campaign
+  // tags, which campaign() saves with the friend's registration, so the waitlist
+  // shows which channel brought them in.
+  const SHARE_TEXT = 'I’m on the HudJee waitlist: JEE practice that adapts to every answer, with mock tests marked the way JEE is marked. Join before it opens:';
+  const shareLink = (channel) => `${SITE}/?utm_source=${channel}&utm_medium=referral&utm_campaign=waitlist_share`;
+
+  function wireShare(form) {
+    const wa = $('[data-share="whatsapp"]', form);
+    const tg = $('[data-share="telegram"]', form);
+    const copy = $('[data-share="copy"]', form);
+    const more = $('[data-share="more"]', form);
+    wa.href = `https://wa.me/?text=${encodeURIComponent(`${SHARE_TEXT} ${shareLink('whatsapp')}`)}`;
+    tg.href = `https://t.me/share/url?url=${encodeURIComponent(shareLink('telegram'))}&text=${encodeURIComponent(SHARE_TEXT)}`;
+
+    // the phone's own share sheet reaches Instagram, Snapchat and the rest
+    more.hidden = !navigator.share;
+    more.addEventListener('click', async () => {
+      try { await navigator.share({ title: 'HudJee', text: SHARE_TEXT, url: shareLink('share_sheet') }); } catch (e) { /* the sheet was closed */ }
+    });
+
+    const label = $('span', copy), glyph = $('use', copy);
+    let restore = 0;
+    copy.addEventListener('click', async () => {
+      const url = shareLink('copy_link');
       try {
-        await navigator.share({ title: 'HudJee', text: 'JEE practice that adapts to every answer. Pre-register for launch:', url: SITE });
-        return;
+        await navigator.clipboard.writeText(url);
       } catch (e) {
-        if (e && e.name === 'AbortError') return;
+        // in-app browsers can refuse the clipboard: show the link to copy by hand
+        const field = $('.reg__url', form);
+        field.value = url;
+        field.hidden = false;
+        field.select();
+        return;
       }
-    }
-    try {
-      await navigator.clipboard.writeText(SITE);
-      label.textContent = 'Link copied';
-      setTimeout(() => { label.textContent = idle; }, 2400);
-    } catch (e) {
-      const field = $('.reg__url', btn.closest('form'));
-      field.value = SITE;
-      field.hidden = false;
-      field.select();
-    }
+      copy.classList.add('is-done');
+      label.textContent = 'Copied';
+      glyph.setAttribute('href', '#i-check');
+      clearTimeout(restore);
+      restore = setTimeout(() => {
+        copy.classList.remove('is-done');
+        label.textContent = 'Copy link';
+        glyph.setAttribute('href', '#i-link');
+      }, 2400);
+    });
   }
 
   regForms.forEach((form) => {
@@ -1662,7 +1803,7 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
       regForms.forEach((f) => { f.reset(); showStep(f, 'email'); });
       emailInput.focus();
     });
-    $('.reg__share', form).addEventListener('click', (e) => share(e.currentTarget));
+    wireShare(form);
   });
 
   if (mine) regForms.forEach((f) => showStep(f, 'done'));
