@@ -45,7 +45,8 @@
  *  Optional:
  *    NOTIFY_SIGNUPS   'on' to also email NOTIFY_TO about each signup
  *    EMAIL_PROVIDER   'brevo' | 'resend' — overrides auto-detection
- *    REPLY_TO         defaults to hello@hudjee.com
+ *    SUPPORT_EMAIL    where students write to; defaults to support@hudjee.com
+ *    REPLY_TO         where replies go; defaults to SUPPORT_EMAIL
  *    SITE_URL         defaults to https://www.hudjee.com
  *    TELEGRAM_URL     defaults to https://t.me/hudjee
  * ──────────────────────────────────────────────────────────────────
@@ -81,23 +82,20 @@ const BATCH_LABELS: Record<string, string> = {
 };
 
 /* ── Brand ─────────────────────────────────────────────────────────
-   The app's own palette (theme/ui.ts, as on hudjee.com): near-black,
-   three surface steps, white and grey text. The ramp's two ends
-   (indigo, brass) only ever mark today's day box. Flat colours only:
-   Gmail strips background-clip:text, and gradients don't survive
-   Outlook. */
+   The app's palette (theme/ui.ts, as on hudjee.com). Restraint is the
+   point: black, one card, white type, grey for the rest, and brass only
+   where the app uses it, on today's box. Flat colours only: Gmail
+   strips background-clip:text, and gradients don't survive Outlook. */
 const C = {
   bg: '#0A0A0C',
   card: '#131317',
-  inset: '#1B1B20',
   day: '#232329',
   border: '#26262C',
   text: '#FFFFFF',
   muted: '#9CA3AF',
-  faint: '#838A96',
-  indigo: '#6D5DF6',
+  faint: '#6B7280',
   brass: '#C99A6B',
-  ink: '#0A0A0C',
+  indigo: '#6D5DF6',
 };
 
 const esc = (v: unknown) =>
@@ -105,7 +103,7 @@ const esc = (v: unknown) =>
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
-/** First name only — "You're in, Priya." reads better than the full name. */
+/** First name only. */
 const firstName = (n: string | null) => {
   const first = String(n ?? '').trim().split(/\s+/)[0] ?? '';
   return first.length > 1 && first.length <= 24 ? first : '';
@@ -115,54 +113,32 @@ const firstName = (n: string | null) => {
    the system face everywhere else. */
 const FONT = `Montserrat,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif`;
 
-/** What's waiting: each line is something hudjee.com already says. */
-const WAITING: [string, string][] = [
-  ['Practice that adapts', 'Every answer sets the next question, so each one is pitched at your level.'],
-  ['Mock tests marked like JEE', 'Full JEE Main papers at +4 and −1, or one subject in an hour.'],
-  ['Mistakes that come back', 'Questions you got wrong return for revision before the exam does.'],
-  ['Know where you stand', 'A readiness score out of 100 every morning, and a daily goal you can keep.'],
-];
+type Links = { site: string; telegram: string; privacy: string; support: string; asset: (p: string) => string };
 
-type Links = { site: string; telegram: string; privacy: string; asset: (p: string) => string };
+/** "5 Oct 2026", in India time. */
+const joinedOn = (iso: string) =>
+  new Date(iso || Date.now()).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' });
 
 /* ────────────────────────────────────────────────────────────────
-   The welcome email.
-   Table layout and inline styles throughout: that's what Gmail,
-   Outlook and iOS Mail's dark mode all leave alone. The two images
-   (the mark and the wordmark) come from hudjee.com and carry alt
-   text, so a client that blocks images still reads "HudJee".
+   The welcome email: a membership card and a few lines.
+   Table layout and inline styles throughout, so Gmail, Outlook and
+   iOS Mail's dark mode leave it alone. The two images carry alt text,
+   so a client that blocks images still reads "HudJee".
    ──────────────────────────────────────────────────────────────── */
 function welcomeHtml(row: WaitlistRow, links: Links) {
   const who = firstName(row.name);
-  const hello = who ? `You’re in, ${esc(who)}.` : `You’re in.`;
 
-  // the first week: today outlined, the rest days to come
-  const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  const week = days.map((d, i) => `
-                  <td align="center" valign="top" style="padding:0 3px">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-                      <td width="30" height="30" style="${
-                        i === 0
-                          // the border sits inside the 30px, as the other days' fill does
-                          ? `width:26px;height:26px;border:2px solid ${C.brass};background:${C.bg}`
-                          : `width:30px;height:30px;background:${C.day}`
-                      };border-radius:8px;font-size:0;line-height:0">&nbsp;</td>
-                    </tr></table>
-                    <div style="padding-top:7px;font-family:${FONT};font-size:11px;font-weight:700;color:${
-                      i === 0 ? C.text : C.faint
-                    }">${d}</div>
-                  </td>`).join('');
-
-  const waiting = WAITING.map(([title, body]) => `
-              <tr>
-                <td width="22" valign="top" style="padding:5px 0 18px">
-                  <div style="width:10px;height:10px;border-radius:3px;background:${C.text};font-size:0;line-height:0">&nbsp;</div>
-                </td>
-                <td valign="top" style="padding:0 0 18px;font-family:${FONT}">
-                  <div style="font-size:15px;line-height:21px;font-weight:700;color:${C.text}">${title}</div>
-                  <div style="padding-top:3px;font-size:14px;line-height:21px;color:${C.muted}">${body}</div>
-                </td>
-              </tr>`).join('');
+  // the card's week: today outlined in brass, the days to come
+  const week = Array.from({ length: 7 }, (_, i) => `
+                    <td style="padding-right:${i === 6 ? 0 : 5}px">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+                        <td width="12" height="12" style="${
+                          i === 0
+                            ? `width:9px;height:9px;border:1.5px solid ${C.brass}`
+                            : `width:12px;height:12px;background:${C.day}`
+                        };border-radius:3px;font-size:0;line-height:0">&nbsp;</td>
+                      </tr></table>
+                    </td>`).join('');
 
   return `<!doctype html>
 <html lang="en"><head>
@@ -170,122 +146,109 @@ function welcomeHtml(row: WaitlistRow, links: Links) {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
 <meta name="supported-color-schemes" content="dark">
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
-<title>You’re on the HudJee list</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<title>Welcome to the Founding Batch</title>
 <style>
   @media (max-width: 480px) {
-    .card { padding: 28px 22px !important; }
-    .h1 { font-size: 27px !important; line-height: 33px !important; }
+    .wrap { padding: 48px 24px 56px !important; }
+    .h1 { font-size: 32px !important; line-height: 38px !important; }
+    .card-in { padding: 22px 22px 20px !important; }
   }
 </style>
 </head>
 <body style="margin:0;padding:0;background:${C.bg};-webkit-text-size-adjust:100%">
 <!-- Preview text: what shows next to the subject in the inbox list. -->
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:${C.bg}">
-  We’ll write the day HudJee opens on Android and iPhone. Here’s what’s waiting for you.
+  You’re one of the first. You’ll get in before HudJee opens to everyone else.
 </div>
 
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${C.bg}"
-       style="background:${C.bg}">
-  <tr><td align="center" style="padding:36px 16px 40px">
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;width:100%">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${C.bg}" style="background:${C.bg}">
+  <tr><td align="center" class="wrap" style="padding:64px 24px 72px">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:480px;width:100%">
 
-      <!-- The mark and the wordmark -->
-      <tr><td style="padding:0 4px 22px">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td valign="middle" style="padding-right:12px">
-            <img src="${links.asset('/apple-touch-icon.png')}" width="36" height="36" alt=""
-                 style="display:block;width:36px;height:36px;border:0;border-radius:9px">
-          </td>
-          <td valign="middle">
-            <img src="${links.asset('/wordmark.png')}" width="94" height="21" alt="HudJee"
-                 style="display:block;width:94px;height:21px;border:0;font-family:${FONT};font-size:20px;font-weight:700;color:${C.text}">
-          </td>
-        </tr></table>
+      <!-- The mark -->
+      <tr><td style="padding:0 0 48px">
+        <img src="${links.asset('/apple-touch-icon.png')}" width="40" height="40" alt="HudJee"
+             style="display:block;width:40px;height:40px;border:0;border-radius:10px;font-family:${FONT};font-size:16px;font-weight:700;color:${C.text}">
       </td></tr>
 
-      <!-- Card -->
-      <tr><td class="card" bgcolor="${C.card}"
-              style="background:${C.card};border:1px solid ${C.border};border-radius:24px;padding:36px 32px">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+      <!-- Headline -->
+      <tr><td style="padding:0 0 20px;font-family:${FONT}">
+        <h1 class="h1" style="margin:0;font-size:40px;line-height:46px;font-weight:700;letter-spacing:-1.4px;color:${C.text}">
+          Welcome to the Founding&nbsp;Batch${who ? `, ${esc(who)}` : ''}.
+        </h1>
+      </td></tr>
+      <tr><td style="padding:0 0 40px;font-family:${FONT};font-size:17px;line-height:27px;color:${C.muted}">
+        You’re one of the first students on HudJee, and you’ll get in before it opens to everyone else.
+      </td></tr>
 
-          <tr><td style="padding:0 0 14px;font-family:${FONT}">
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-              <td valign="middle" style="padding-right:9px">
-                <div style="width:9px;height:9px;border-radius:3px;border:2px solid ${C.indigo};font-size:0;line-height:0">&nbsp;</div>
-              </td>
-              <td valign="middle" style="font-size:11px;letter-spacing:1.6px;text-transform:uppercase;font-weight:700;color:${C.muted}">
-                You’re on the list
-              </td>
-            </tr></table>
-          </td></tr>
-
-          <tr><td style="padding:0 0 14px;font-family:${FONT}">
-            <h1 class="h1" style="margin:0;font-size:32px;line-height:38px;font-weight:800;letter-spacing:-0.8px;color:${C.text}">${hello}</h1>
-          </td></tr>
-
-          <tr><td style="padding:0 0 28px;font-family:${FONT};font-size:16px;line-height:25px;color:${C.muted}">
-            HudJee is JEE practice that adapts to every answer. We’ll email you the day it opens
-            on Android and iPhone, so you can start on day one.
-          </td></tr>
-
-          <!-- Day one -->
-          <tr><td style="padding:0 0 30px">
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${C.inset}"
-                   style="background:${C.inset};border-radius:18px">
-              <tr><td style="padding:20px 18px 18px;font-family:${FONT}">
-                <div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;color:${C.faint};padding:0 3px 14px">
-                  Your first week
-                </div>
-                <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>${week}
-                </tr></table>
-                <div style="padding:16px 3px 0;font-size:14px;line-height:21px;color:${C.muted}">
-                  <span style="color:${C.text};font-weight:700">Day one starts when HudJee opens.</span>
-                  Twenty questions and about thirty minutes a day is all it asks.
-                </div>
+      <!-- The membership card -->
+      <tr><td style="padding:0 0 44px">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${C.card}"
+               style="background:${C.card};border:1px solid ${C.border};border-radius:20px">
+          <tr><td class="card-in" style="padding:26px 28px 24px">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td valign="top">
+                  <img src="${links.asset('/wordmark.png')}" width="76" height="17" alt="HudJee"
+                       style="display:block;width:76px;height:17px;border:0;font-family:${FONT};font-size:15px;font-weight:600;color:${C.text}">
+                </td>
+                <td valign="top" align="right" style="font-family:${FONT};font-size:12px;line-height:17px;font-weight:500;color:${C.faint}">
+                  ${esc(joinedOn(row.created_at))}
+                </td>
+              </tr>
+              <tr><td colspan="2" style="padding:64px 0 6px;font-family:${FONT};font-size:11px;letter-spacing:2.4px;text-transform:uppercase;font-weight:600;color:${C.brass}">
+                Founding Batch
               </td></tr>
+              <tr>
+                <td valign="bottom" style="font-family:${FONT};font-size:20px;line-height:26px;font-weight:600;letter-spacing:-0.4px;color:${C.text}">
+                  ${who ? esc(who) : 'Founding member'}
+                </td>
+                <td valign="bottom" align="right">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>${week}
+                  </tr></table>
+                </td>
+              </tr>
             </table>
           </td></tr>
-
-          <tr><td style="padding:0 0 16px;font-family:${FONT};font-size:11px;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;color:${C.faint}">
-            What’s waiting for you
-          </td></tr>
-          <tr><td>
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">${waiting}
-            </table>
-          </td></tr>
-
-          <!-- Button -->
-          <tr><td style="padding:10px 0 0">
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-              <td bgcolor="${C.text}" style="background:${C.text};border-radius:14px">
-                <a href="${esc(links.site)}"
-                   style="display:inline-block;padding:15px 26px;font-family:${FONT};font-size:15px;font-weight:700;
-                          letter-spacing:-0.2px;color:${C.ink};text-decoration:none;border-radius:14px">
-                  See how HudJee works&nbsp;&nbsp;→
-                </a>
-              </td>
-            </tr></table>
-          </td></tr>
-
-          <tr><td style="padding:22px 0 0;font-family:${FONT};font-size:14px;line-height:21px;color:${C.muted}">
-            Want company while you wait?
-            <a href="${esc(links.telegram)}" style="color:${C.text};font-weight:700;text-decoration:underline">Practise with the batch on Telegram</a>.
-          </td></tr>
-
         </table>
       </td></tr>
 
-      <!-- Footer -->
-      <tr><td style="padding:24px 8px 0;font-family:${FONT};font-size:12px;line-height:19px;color:${C.faint}">
-        You’re getting this because this address was pre-registered at
-        <a href="${esc(links.site)}" style="color:${C.muted};text-decoration:underline">hudjee.com</a>.
-        We’ll only write about HudJee’s launch, and we never share your email.
-        Not you, or changed your mind? Reply “remove” and you’re off the list.
+      <!-- What it means -->
+      <tr><td style="padding:0 0 20px;font-family:${FONT};font-size:16px;line-height:26px;color:${C.muted}">
+        You’ll also carry the Founding Batch badge in the app, and keep the founding
+        price for as long as you use HudJee.
       </td></tr>
-      <tr><td style="padding:12px 8px 0;font-family:${FONT};font-size:12px;line-height:19px;color:${C.faint}">
-        <a href="${esc(links.privacy)}" style="color:${C.muted};text-decoration:underline">Privacy</a>
-        &nbsp;·&nbsp; © ${new Date().getFullYear()} HudJee &nbsp;·&nbsp; Practice daily. Rank higher.
+      <tr><td style="padding:0 0 44px;font-family:${FONT};font-size:16px;line-height:26px;color:${C.text}">
+        Give it thirty minutes a day. HudJee picks the chapter, pitches every question
+        at your level, and brings back every mistake before the exam does.
+      </td></tr>
+
+      <!-- The one ask -->
+      <tr><td style="padding:0 0 36px;font-family:${FONT};font-size:16px;line-height:26px;color:${C.muted}">
+        Until we open, there’s a previous-year question every day on our Telegram.<br>
+        <a href="${esc(links.telegram)}" style="color:${C.text};font-weight:600;text-decoration:none;border-bottom:1px solid ${C.faint}">Join the channel&nbsp;→</a>
+      </td></tr>
+
+      <!-- Write to us -->
+      <tr><td style="padding:0 0 48px;font-family:${FONT};font-size:16px;line-height:26px;color:${C.muted}">
+        Something to ask, or say? Write to us at
+        <a href="mailto:${esc(links.support)}" style="color:${C.text};font-weight:600;text-decoration:none;border-bottom:1px solid ${C.faint}">${esc(links.support)}</a>.
+        We read every email.
+      </td></tr>
+
+      <!-- Sign-off -->
+      <tr><td style="padding:0 0 56px;font-family:${FONT};font-size:16px;line-height:26px;color:${C.text};font-weight:600">
+        Team HudJee
+      </td></tr>
+
+      <!-- Footer -->
+      <tr><td style="padding:24px 0 0;border-top:1px solid ${C.border};font-family:${FONT};font-size:12px;line-height:19px;color:${C.faint}">
+        You joined the Founding Batch at
+        <a href="${esc(links.site)}" style="color:${C.muted};text-decoration:none">hudjee.com</a>.
+        We’ll only write about HudJee’s launch. To leave the list, write to
+        <a href="mailto:${esc(links.support)}" style="color:${C.muted};text-decoration:none">${esc(links.support)}</a>.
+        <a href="${esc(links.privacy)}" style="color:${C.muted};text-decoration:none">Privacy</a>
       </td></tr>
 
     </table>
@@ -299,25 +262,27 @@ function welcomeHtml(row: WaitlistRow, links: Links) {
 function welcomeText(row: WaitlistRow, links: Links) {
   const who = firstName(row.name);
   return [
-    who ? `You're in, ${who}.` : `You're in.`,
+    who ? `Welcome to the Founding Batch, ${who}.` : `Welcome to the Founding Batch.`,
     ``,
-    `HudJee is JEE practice that adapts to every answer. We'll email you the day it opens`,
-    `on Android and iPhone, so you can start on day one.`,
+    `You're one of the first students on HudJee, and you'll get in before it opens to`,
+    `everyone else.`,
     ``,
-    `Day one starts when HudJee opens. Twenty questions and about thirty minutes a day`,
-    `is all it asks.`,
+    `You'll also carry the Founding Batch badge in the app, and keep the founding price for`,
+    `as long as you use HudJee.`,
     ``,
-    `WHAT'S WAITING FOR YOU`,
-    ...WAITING.map(([title, body]) => `- ${title}: ${body}`),
+    `Give it thirty minutes a day. HudJee picks the chapter, pitches every question at your`,
+    `level, and brings back every mistake before the exam does.`,
     ``,
-    `See how HudJee works: ${links.site}`,
-    `Practise with the batch on Telegram: ${links.telegram}`,
+    `Until we open, there's a previous-year question every day on our Telegram:`,
+    links.telegram,
+    ``,
+    `Something to ask, or say? Write to us at ${links.support}. We read every email.`,
+    ``,
+    `Team HudJee`,
     ``,
     `--`,
-    `You're getting this because this address was pre-registered at hudjee.com.`,
-    `We'll only write about HudJee's launch, and we never share your email.`,
-    `Not you, or changed your mind? Reply "remove" and you're off the list.`,
-    `Privacy: ${links.privacy}`,
+    `You joined the Founding Batch at hudjee.com. We'll only write about HudJee's launch.`,
+    `To leave the list, write to ${links.support}. Privacy: ${links.privacy}`,
   ].join('\n');
 }
 
@@ -465,12 +430,14 @@ Deno.serve(async (req: Request) => {
   const notifyTo = Deno.env.get('NOTIFY_TO') ?? 'hudjee26@gmail.com';
   const notifyFrom = Deno.env.get('NOTIFY_FROM') ?? 'HudJee <hello@hudjee.com>';
   const welcomeFrom = Deno.env.get('WELCOME_FROM') ?? notifyFrom;
-  const replyTo = Deno.env.get('REPLY_TO') ?? 'hello@hudjee.com';
+  const support = Deno.env.get('SUPPORT_EMAIL') ?? 'support@hudjee.com';
+  const replyTo = Deno.env.get('REPLY_TO') ?? support;
   const site = (Deno.env.get('SITE_URL') ?? 'https://www.hudjee.com').replace(/\/+$/, '');
   const links: Links = {
     site,
     telegram: Deno.env.get('TELEGRAM_URL') ?? 'https://t.me/hudjee',
     privacy: `${site}/privacy`,
+    support,
     asset: (path) => `${site}${path}`,
   };
 
@@ -501,7 +468,7 @@ Deno.serve(async (req: Request) => {
       from: welcomeFrom,
       to: row.email,
       replyTo: replyTo,
-      subject: `You’re on the HudJee list`,
+      subject: `Welcome to the Founding Batch`,
       html: welcomeHtml(row, links),
       text: welcomeText(row, links),
     }),
