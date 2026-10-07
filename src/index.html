@@ -693,8 +693,8 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
 .join:has([aria-invalid="true"]) { box-shadow: inset 0 0 0 1.5px var(--negative); }
 .join__day { --s: 18px; }
 .join__day .ic { font-size: 11px; stroke-width: 3.4; color: var(--on-light); opacity: 0; transform: scale(0.4); transition: opacity 0.2s, transform 0.3s var(--ease-emph); }
-/* the box fills when the address looks right, and ticks once you're registered */
-.reg.is-ready .join__day, .reg.is-done .join__day { background: linear-gradient(var(--text), var(--text)) padding-box, var(--ramp-diag) border-box; }
+/* a row's box fills when its field looks right, and ticks once you're registered */
+.join.is-ok .join__day, .reg.is-done .join__day { background: linear-gradient(var(--text), var(--text)) padding-box, var(--ramp-diag) border-box; }
 .reg.is-done .join__day .ic { opacity: 1; transform: none; }
 .join__input {
   flex: 1; width: 0; min-width: 0; height: 56px; padding: 0 4px; border: 0; background: transparent;
@@ -702,6 +702,7 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
 }
 .join__input::placeholder { color: var(--text-faint); opacity: 1; }
 .join__input:focus { outline: none; }
+.join--name { padding-right: 20px; }
 /* GradientButton: a page-coloured pill inside a 1.5px ramp */
 .join__go { flex: none; min-height: 56px; padding: 0 28px; border-radius: 14px; font-size: 16px; }
 .join__go .ic { transition: transform 0.25s var(--ease-emph); }
@@ -1128,22 +1129,27 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
       <div class="ft__brand">
         <p class="pill"><span class="day day--today" aria-hidden="true"></span>Launching soon on Android and iPhone</p>
         <h2 class="ft__title" id="register-title">Practice daily.<br>Rank higher.</h2>
-        <p class="ft__lead">Leave your email and you’ll be the first to know when HudJee opens.</p>
+        <p class="ft__lead">Leave your name and email and you’ll be the first to know when HudJee opens.</p>
       </div>
 
       <div class="ft__join">
         <p class="ft__lbl">Get launch-day access</p>
         <form class="reg" id="reg-closing" data-source="closing" data-step="email" novalidate>
           <div class="reg__step" data-step="email">
+            <div class="join join--name">
+              <span class="day join__day" aria-hidden="true"><svg class="ic"><use href="#i-check"/></svg></span>
+              <label class="sr-only" for="rc-name">Your name</label>
+              <input class="join__input" id="rc-name" name="name" type="text" autocomplete="name" autocapitalize="words" maxlength="80" required placeholder="Your name" aria-describedby="rc-error">
+            </div>
             <div class="join">
               <span class="day join__day" aria-hidden="true"><svg class="ic"><use href="#i-check"/></svg></span>
               <label class="sr-only" for="rc-email">Email address</label>
-              <input class="join__input" id="rc-email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="you@example.com" aria-describedby="rc-note rc-error">
+              <input class="join__input" id="rc-email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" required placeholder="you@example.com" aria-describedby="rc-note rc-error">
               <button class="btn btn--ramp join__go reg__submit" type="submit"><span>Register</span><svg class="ic"><use href="#i-arrow-right"/></svg></button>
             </div>
             <div class="reg__trap" aria-hidden="true"><label for="rc-trap">Leave this empty</label><input id="rc-trap" name="hj_trap" type="text" tabindex="-1" autocomplete="off"></div>
             <p class="reg__error" id="rc-error" aria-live="polite"></p>
-            <p class="fine" id="rc-note">We’ll only use it to tell you when HudJee opens. <a href="/privacy">Privacy</a></p>
+            <p class="fine" id="rc-note">We’ll only use them to tell you when HudJee opens. <a href="/privacy">Privacy</a></p>
             <noscript><p class="fine">Turn on JavaScript to register.</p></noscript>
           </div>
 
@@ -1151,7 +1157,7 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
             <div class="reg__head">
               <span class="reg__ok"><svg class="ic"><use href="#i-check"/></svg></span>
               <p class="reg__title" tabindex="-1">You’re on the list</p>
-              <p class="reg__sub">Three quick answers help us plan launch day. All optional.</p>
+              <p class="reg__sub">Two quick answers help us plan launch day. Both optional.</p>
             </div>
             <fieldset class="reg__q">
               <legend>When do you sit JEE?</legend>
@@ -1168,10 +1174,6 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
                 <label class="pick"><input type="radio" name="platform" value="ios"><span>iPhone</span></label>
               </div>
             </fieldset>
-            <div class="reg__q">
-              <label class="reg__qlabel" for="rc-name">Your name</label>
-              <input class="reg__input" id="rc-name" name="name" type="text" autocomplete="name" maxlength="80">
-            </div>
             <p class="reg__error" aria-live="polite"></p>
             <div class="reg__actions">
               <button class="btn btn--ramp reg__save" type="submit"><span>Save</span></button>
@@ -1409,7 +1411,7 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
     // The nav's Register lands on the card; with a mouse, the field is ready to type in.
     if (window.matchMedia('(pointer: fine)').matches) {
       $$('a[href="#register"]').forEach((a) => a.addEventListener('click', () => {
-        const input = $('#rc-email');
+        const input = $('#rc-name');
         if (input && !input.closest('[hidden]')) setTimeout(() => input.focus({ preventScroll: true }), 450);
       }));
     }
@@ -1588,6 +1590,7 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
   const PREVIEW = !(CONFIG && CONFIG.supabaseUrl && CONFIG.supabaseKey);
   const STORE = 'hudjee:pre-registered';
   const MSG = {
+    noName: 'Enter your name.',
     empty: 'Enter your email address.',
     invalid: 'That email address doesn’t look right. Check it for typos.',
     failed: 'Couldn’t register you just now. Check your connection and try again.',
@@ -1596,6 +1599,9 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
     unsaved: 'Couldn’t save that. Try again, or skip it.',
   };
   const regForms = $$('form.reg');
+
+  // Trimmed and cut to the 80 characters register_interest() keeps.
+  const readName = (raw) => raw.trim().slice(0, 80) || null;
 
   // The same rule register_interest() applies.
   function readEmail(raw) {
@@ -1661,7 +1667,7 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
       $('.reg__url', form).hidden = true;
     }
     if (focus) {
-      const target = name === 'email' ? $('input[name="email"]', form) : $(`[data-step="${name}"] .reg__title`, form);
+      const target = name === 'email' ? $('input[name="name"]', form) : $(`[data-step="${name}"] .reg__title`, form);
       if (target) target.focus();
     }
   }
@@ -1720,25 +1726,38 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
   }
 
   regForms.forEach((form) => {
+    const nameInput = $('input[name="name"]', form);
     const emailInput = $('input[name="email"]', form);
     const trap = $('input[name="hj_trap"]', form);
     const [emailError, detailsError] = $$('.reg__error', form);
     const submit = $('.reg__submit', form);
     const save = $('.reg__save', form);
 
-    emailInput.addEventListener('input', () => {
-      emailInput.removeAttribute('aria-invalid');
+    // Each row's box fills as its field is filled in; the form is ready once both are.
+    [nameInput, emailInput].forEach((input) => input.addEventListener('input', () => {
+      input.removeAttribute('aria-invalid');
       emailError.textContent = '';
-      const ready = !!readEmail(emailInput.value);
+      const hasName = !!readName(nameInput.value);
+      const hasEmail = !!readEmail(emailInput.value);
+      nameInput.parentElement.classList.toggle('is-ok', hasName);
+      emailInput.parentElement.classList.toggle('is-ok', hasEmail);
+      const ready = hasName && hasEmail;
       form.classList.toggle('is-ready', ready);
       document.dispatchEvent(new CustomEvent('hj:ready', { detail: ready }));
-    });
+    }));
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (form.dataset.step === 'email') {
         if (submit.disabled) return;
+        const name = readName(nameInput.value);
         const email = readEmail(emailInput.value);
+        if (!name) {
+          nameInput.setAttribute('aria-invalid', 'true');
+          emailError.textContent = MSG.noName;
+          nameInput.focus();
+          return;
+        }
         if (!email) {
           emailInput.setAttribute('aria-invalid', 'true');
           emailError.textContent = emailInput.value.trim() ? MSG.invalid : MSG.empty;
@@ -1748,12 +1767,13 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
         busy(submit, true, 'Registering…');
         try {
           const res = await registerInterest({
-            p_email: email, p_source: form.dataset.source, p_utm: campaign(), p_trap: trap.value || null,
+            p_email: email, p_name: name, p_source: form.dataset.source, p_utm: campaign(), p_trap: trap.value || null,
           });
           if (!res || res.ok !== true) {
             if (res && res.error === 'invalid_email') emailInput.setAttribute('aria-invalid', 'true');
+            if (res && res.error === 'name_required') nameInput.setAttribute('aria-invalid', 'true');
             const why = res && res.error;
-            emailError.textContent = why === 'invalid_email' ? MSG.invalid : why === 'already_registered' ? MSG.already : why === 'busy' ? MSG.busy : MSG.failed;
+            emailError.textContent = why === 'name_required' ? MSG.noName : why === 'invalid_email' ? MSG.invalid : why === 'already_registered' ? MSG.already : why === 'busy' ? MSG.busy : MSG.failed;
             return;
           }
           remember({ email });
@@ -1769,14 +1789,12 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
         if (save.disabled) return;
         const year = $('input[name="exam_year"]:checked', form);
         const phone = $('input[name="platform"]:checked', form);
-        const name = $('input[name="name"]', form).value.trim();
-        if (!mine || (!year && !phone && !name)) { showStep(form, 'done', true); return; }
+        if (!mine || (!year && !phone)) { showStep(form, 'done', true); return; }
         detailsError.textContent = '';
         busy(save, true, 'Saving…');
         try {
           const res = await registerInterest({
             p_email: mine.email,
-            p_name: name || null,
             p_exam_year: year ? Number(year.value) : null,
             p_platform: phone ? phone.value : null,
             p_source: form.dataset.source,
@@ -1795,9 +1813,10 @@ main > section { scroll-margin-top: 64px; }   /* land below the sticky nav */
     $('.reg__again', form).addEventListener('click', () => {
       remember(null);
       form.classList.remove('is-ready', 'is-done');
+      $$('.join.is-ok', form).forEach((row) => row.classList.remove('is-ok'));
       document.dispatchEvent(new CustomEvent('hj:reset'));
       regForms.forEach((f) => { f.reset(); showStep(f, 'email'); });
-      emailInput.focus();
+      nameInput.focus();
     });
     wireShare(form);
   });
